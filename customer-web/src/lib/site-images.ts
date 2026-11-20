@@ -227,31 +227,48 @@ export function serviceImage(
   return servicesMap.default || DEFAULT_SITE_IMAGES.services.default;
 }
 
+/**
+ * Normalizes image URLs from various sources, including Google Drive share links.
+ * Converts shareable Google Drive links (e.g. drive.google.com/file/d/XYZ/view)
+ * into direct web image URLs (lh3.googleusercontent.com/d/XYZ).
+ */
+export function normalizeImageUrl(url: string | null | undefined): string {
+  if (!url) return "";
+  const trimmed = url.trim();
+  const gdriveMatch = trimmed.match(
+    /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/
+  );
+  if (gdriveMatch && gdriveMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${gdriveMatch[1]}`;
+  }
+  return trimmed;
+}
+
 /** Merges custom admin photos over defaults */
 export function mergeSiteMedia(custom?: Partial<SiteMedia> | null): SiteMedia {
   if (!custom) return DEFAULT_SITE_IMAGES;
   return {
-    hero: custom.hero || DEFAULT_SITE_IMAGES.hero,
+    hero: normalizeImageUrl(custom.hero) || DEFAULT_SITE_IMAGES.hero,
     transformation: {
-      before: custom.transformation?.before || DEFAULT_SITE_IMAGES.transformation.before,
-      after: custom.transformation?.after || DEFAULT_SITE_IMAGES.transformation.after,
+      before: normalizeImageUrl(custom.transformation?.before) || DEFAULT_SITE_IMAGES.transformation.before,
+      after: normalizeImageUrl(custom.transformation?.after) || DEFAULT_SITE_IMAGES.transformation.after,
     },
-    detailEyes: custom.detailEyes || DEFAULT_SITE_IMAGES.detailEyes,
-    detailPalette: custom.detailPalette || DEFAULT_SITE_IMAGES.detailPalette,
-    detailJewellery: custom.detailJewellery || DEFAULT_SITE_IMAGES.detailJewellery,
-    mehendi: custom.mehendi || DEFAULT_SITE_IMAGES.mehendi,
+    detailEyes: normalizeImageUrl(custom.detailEyes) || DEFAULT_SITE_IMAGES.detailEyes,
+    detailPalette: normalizeImageUrl(custom.detailPalette) || DEFAULT_SITE_IMAGES.detailPalette,
+    detailJewellery: normalizeImageUrl(custom.detailJewellery) || DEFAULT_SITE_IMAGES.detailJewellery,
+    mehendi: normalizeImageUrl(custom.mehendi) || DEFAULT_SITE_IMAGES.mehendi,
     services: {
-      bridal: custom.services?.bridal || DEFAULT_SITE_IMAGES.services.bridal,
-      engagement: custom.services?.engagement || DEFAULT_SITE_IMAGES.services.engagement,
-      party: custom.services?.party || DEFAULT_SITE_IMAGES.services.party,
-      destination: custom.services?.destination || DEFAULT_SITE_IMAGES.services.destination,
-      default: custom.services?.default || DEFAULT_SITE_IMAGES.services.default,
+      bridal: normalizeImageUrl(custom.services?.bridal) || DEFAULT_SITE_IMAGES.services.bridal,
+      engagement: normalizeImageUrl(custom.services?.engagement) || DEFAULT_SITE_IMAGES.services.engagement,
+      party: normalizeImageUrl(custom.services?.party) || DEFAULT_SITE_IMAGES.services.party,
+      destination: normalizeImageUrl(custom.services?.destination) || DEFAULT_SITE_IMAGES.services.destination,
+      default: normalizeImageUrl(custom.services?.default) || DEFAULT_SITE_IMAGES.services.default,
     },
     cities: {
-      jodhpur: custom.cities?.jodhpur || DEFAULT_SITE_IMAGES.cities.jodhpur,
-      jaipur: custom.cities?.jaipur || DEFAULT_SITE_IMAGES.cities.jaipur,
-      udaipur: custom.cities?.udaipur || DEFAULT_SITE_IMAGES.cities.udaipur,
-      destination: custom.cities?.destination || DEFAULT_SITE_IMAGES.cities.destination,
+      jodhpur: normalizeImageUrl(custom.cities?.jodhpur) || DEFAULT_SITE_IMAGES.cities.jodhpur,
+      jaipur: normalizeImageUrl(custom.cities?.jaipur) || DEFAULT_SITE_IMAGES.cities.jaipur,
+      udaipur: normalizeImageUrl(custom.cities?.udaipur) || DEFAULT_SITE_IMAGES.cities.udaipur,
+      destination: normalizeImageUrl(custom.cities?.destination) || DEFAULT_SITE_IMAGES.cities.destination,
     },
   };
 }

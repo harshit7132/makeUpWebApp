@@ -25,6 +25,7 @@ import {
   X,
 } from "lucide-react";
 import type { SiteMedia, GalleryPhoto } from "../../lib/site-images";
+import { normalizeImageUrl } from "../../lib/site-images";
 import FadeImg from "../../components/site/FadeImg";
 
 export default function AdminPage() {
@@ -594,12 +595,17 @@ function PhotoField({
 
       {/* URL Input */}
       <div>
-        <label className="text-[10px] uppercase tracking-wider text-muted font-semibold block mb-1">Photo URL</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className="text-[10px] uppercase tracking-wider text-muted font-semibold block">Photo URL (or Google Drive link)</label>
+          {url.includes("googleusercontent.com") && (
+            <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">Google Drive active</span>
+          )}
+        </div>
         <input
           type="url"
           value={url}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="https://..."
+          onChange={(e) => onChange(normalizeImageUrl(e.target.value))}
+          placeholder="Paste Image URL or Google Drive share link"
           className="field text-xs py-2 px-3"
         />
       </div>
@@ -762,13 +768,14 @@ function GalleryItemModal({
   };
 
   const updateSlideUrl = (idx: number, val: string) => {
+    const normalized = normalizeImageUrl(val);
     setCarouselImages((prev) => {
       const next = [...prev];
-      next[idx] = val;
+      next[idx] = normalized;
       return next;
     });
     // Set first slide as main src if not specified
-    if (idx === 0) setSrc(val);
+    if (idx === 0) setSrc(normalized);
   };
 
   const handleFileUpload = async (file: File, targetIdx: number) => {
