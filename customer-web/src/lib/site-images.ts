@@ -45,7 +45,7 @@ export const SITE_IMAGES = {
    * Replace these URLs or drop files in /public/images when client sends photos!
    */
   transformation: {
-    before: u("1544005313-94ddf0286df2", 1200),
+    before: u("1617627143750-d86bc21e42bb", 1200),
     after: u("1600685890506-593fdf55949b", 1200),
   },
 } as const;
