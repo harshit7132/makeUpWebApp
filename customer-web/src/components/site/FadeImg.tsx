@@ -18,7 +18,7 @@ function unsplashSrcSet(src: string): string | undefined {
 }
 
 /** Plain <img> that fades in once decoded, with a soft placeholder tone behind it. */
-export default function FadeImg({ src, alt, className = "", sizes = "100vw", loading = "lazy", ...rest }: Props) {
+export default function FadeImg({ src, alt, className = "", sizes = "100vw", loading = "lazy", draggable = false, ...rest }: Props) {
   const ref = useRef<HTMLImageElement>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -35,9 +35,12 @@ export default function FadeImg({ src, alt, className = "", sizes = "100vw", loa
       sizes={sizes}
       alt={alt}
       loading={loading}
+      draggable={draggable}
+      onDragStart={(e) => e.preventDefault()}
       decoding="async"
       onLoad={() => setLoaded(true)}
-      className={`img-fade ${loaded ? "is-loaded" : ""} ${className}`}
+      className={`img-fade select-none pointer-events-none ${loaded ? "is-loaded" : ""} ${className}`}
+      style={{ WebkitUserDrag: "none", userSelect: "none", ...((rest as any).style || {}) }}
       {...rest}
     />
   );

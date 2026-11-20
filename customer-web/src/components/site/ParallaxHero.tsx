@@ -27,7 +27,6 @@ export default function ParallaxHero({
   const [activeView, setActiveView] = useState<"before" | "split" | "after">("split");
 
   const isDraggingRef = useRef(false);
-  const hasInteractedRef = useRef(false);
   const currentPosRef = useRef(50);
 
   // Apply slider position directly to DOM (Zero React re-renders = True 120 FPS buttery smooth)
@@ -67,14 +66,18 @@ export default function ParallaxHero({
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
-    hasInteractedRef.current = true;
+    // CRITICAL: e.preventDefault() prevents browser native image drag and text selection ghosts
+    e.preventDefault();
     isDraggingRef.current = true;
     handlePointerMove(e.clientX);
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
     if (!isDraggingRef.current) return;
+    e.preventDefault();
     handlePointerMove(e.clientX);
   };
 
@@ -85,16 +88,27 @@ export default function ParallaxHero({
     } catch (_) {}
   };
 
-  // Button clicks animate smoothly
+  // Optional mouse wheel / trackpad horizontal scroll support directly on the frame
+  const onWheel = (e: React.WheelEvent) => {
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(delta) > 1) {
+      const next = Math.max(0, Math.min(100, currentPosRef.current + delta * 0.12));
+      applyPosition(next, false);
+      if (next < 15) setActiveView("before");
+      else if (next > 85) setActiveView("after");
+      else setActiveView("split");
+    }
+  };
+
+  // Button clicks animate smoothly to preset positions
   const setPresetView = (view: "before" | "split" | "after") => {
-    hasInteractedRef.current = true;
     setActiveView(view);
     if (view === "before") applyPosition(0, true);
     if (view === "split") applyPosition(50, true);
     if (view === "after") applyPosition(100, true);
   };
 
-  // Scroll sync: smoothly glides the slider as user scrolls into the page
+  // Scroll sync: smoothly glides the slider as user scrolls up or down the page
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end start"],
@@ -108,16 +122,20 @@ export default function ParallaxHero({
 
     let rafId = 0;
     const unsubscribe = scrollYProgress.on("change", (latest) => {
-      if (hasInteractedRef.current || isDraggingRef.current) return;
+      // Only pause scroll-sync if user is actively holding down the mouse to drag
+      if (isDraggingRef.current) return;
 
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        if (latest >= 0.02 && latest <= 0.6) {
-          const norm = (latest - 0.02) / 0.58;
-          const pos = 30 + norm * 50; // Glides smoothly from 30% to 80%
-          applyPosition(pos, false);
-          setActiveView("split");
-        }
+        // As you scroll down from top of page (0.0) through the hero (0.5)
+        // the slider smoothly glides from 25% (mostly before) to 85% (full bridal after)
+        const progress = Math.max(0, Math.min(1, latest / 0.5));
+        const pos = 25 + progress * 60; // scrubs from 25% to 85% smoothly
+        applyPosition(pos, false);
+
+        if (pos < 20) setActiveView("before");
+        else if (pos > 80) setActiveView("after");
+        else setActiveView("split");
       });
     });
 
@@ -130,7 +148,7 @@ export default function ParallaxHero({
   return (
     <section
       ref={containerRef}
-      className="relative isolate overflow-hidden bg-plum-dark text-white min-h-[90vh] lg:min-h-screen flex items-center pt-24 pb-12 lg:pt-28 lg:pb-14"
+      className="relative isolate overflow-hidden bg-plum-dark text-white min-h-[90vh] lg:min-h-screen flex items-center pt-24 pb-12 lg:pt-28 lg:pb-14 select-none"
     >
       {/* Background ambient lighting */}
       <div
@@ -173,14 +191,14 @@ export default function ParallaxHero({
               </Link>
             </div>
 
-            {/* Availability Checker placed cleanly below buttons on the left */}
+            {/* Availability Checker placed cleanly on the left column */}
             <div className="mt-8 max-w-md">
               <AvailabilityChecker className="border-gold/30 bg-white/95 text-plum shadow-2xl backdrop-blur-xl p-4 sm:p-5" />
             </div>
           </div>
 
           {/* ================= RIGHT COLUMN (FULL UNOBSTRUCTED BEFORE & AFTER) ================= */}
-          <div className="relative flex flex-col items-center">
+          <div className="relative flex flex-col items-center select-none">
             {/* Quick Pill Controls */}
             <div className="mb-3 flex w-full max-w-[420px] items-center justify-between px-1">
               <span className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-gold-light">
@@ -224,8 +242,8 @@ export default function ParallaxHero({
               </div>
             </div>
 
-            {/* Arched Portrait Stage (Constrained to fit 100% in viewport without vertical overflow) */}
-            <div className="relative w-full max-w-[420px]">
+            {/* Arched Portrait Stage */}
+            <div className="relative w-full max-w-[420px] select-none">
               {/* Outer Glow Ring */}
               <div
                 aria-hidden="true"
@@ -238,22 +256,31 @@ export default function ParallaxHero({
                 <span>One bride per day</span>
               </div>
 
-              {/* The Arched Before & After Frame */}
+              {/* The Arched Before & After Frame with Touch/Drag/Wheel events */}
               <div
                 ref={sliderFrameRef}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
-                className="group relative h-[56vh] max-h-[510px] min-h-[380px] w-full cursor-ew-resize overflow-hidden rounded-t-[999px] rounded-b-[2.5rem] bg-plum-dark ring-1 ring-gold/40 shadow-2xl touch-none select-none"
+                onWheel={onWheel}
+                onDragStart={(e) => e.preventDefault()}
+                onContextMenu={(e) => e.preventDefault()}
+                style={{
+                  touchAction: "none",
+                  userSelect: "none",
+                  WebkitUserSelect: "none",
+                }}
+                className="group relative h-[56vh] max-h-[510px] min-h-[380px] w-full cursor-ew-resize overflow-hidden rounded-t-[999px] rounded-b-[2.5rem] bg-plum-dark ring-1 ring-gold/40 shadow-2xl select-none"
               >
                 {/* Layer 1: BEFORE Image (Underneath) */}
-                <div className="absolute inset-0 h-full w-full">
+                <div className="pointer-events-none absolute inset-0 h-full w-full select-none">
                   <FadeImg
                     src={beforeImage}
                     alt="Bride before makeup - clean skin and natural prep"
                     sizes="420px"
-                    className="h-full w-full object-cover object-[50%_15%]"
+                    draggable={false}
+                    className="h-full w-full object-cover object-[50%_15%] pointer-events-none select-none"
                   />
                   <div
                     aria-hidden="true"
@@ -268,13 +295,14 @@ export default function ParallaxHero({
                     clipPath: "polygon(0 0, 50% 0, 50% 100%, 0 100%)",
                     willChange: "clip-path",
                   }}
-                  className="pointer-events-none absolute inset-0 h-full w-full"
+                  className="pointer-events-none absolute inset-0 h-full w-full select-none"
                 >
                   <FadeImg
                     src={afterImage}
                     alt="Bride after makeup - royal Rajasthani bridal look"
                     sizes="420px"
-                    className="h-full w-full object-cover object-[50%_15%]"
+                    draggable={false}
+                    className="h-full w-full object-cover object-[50%_15%] pointer-events-none select-none"
                   />
                   <div
                     aria-hidden="true"
@@ -283,12 +311,12 @@ export default function ParallaxHero({
                 </div>
 
                 {/* Floating Status Badges */}
-                <div className="pointer-events-none absolute top-6 left-5 z-20">
+                <div className="pointer-events-none absolute top-6 left-5 z-20 select-none">
                   <span className="rounded-full border border-gold/40 bg-gold/90 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase text-plum-dark backdrop-blur-md shadow-xs">
                     AFTER · Royal Bride
                   </span>
                 </div>
-                <div className="pointer-events-none absolute top-6 right-5 z-20">
+                <div className="pointer-events-none absolute top-6 right-5 z-20 select-none">
                   <span className="rounded-full border border-white/20 bg-plum-dark/85 px-2.5 py-0.5 text-[10px] font-medium tracking-wider uppercase text-white/90 backdrop-blur-md shadow-xs">
                     BEFORE · Bare Skin
                   </span>
@@ -301,19 +329,19 @@ export default function ParallaxHero({
                     left: "50%",
                     willChange: "left",
                   }}
-                  className="pointer-events-none absolute inset-y-0 -ml-[1px] w-[2px] bg-gradient-to-b from-gold-light via-gold to-gold-dark z-20 shadow-[0_0_12px_rgba(212,175,55,0.85)]"
+                  className="pointer-events-none absolute inset-y-0 -ml-[1px] w-[2px] bg-gradient-to-b from-gold-light via-gold to-gold-dark z-20 shadow-[0_0_12px_rgba(212,175,55,0.85)] select-none"
                 >
                   {/* Golden Medallion Drag Handle */}
-                  <div className="absolute top-1/2 -left-4 -translate-y-1/2 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-gold bg-plum-dark text-gold-light shadow-luxury transition-transform duration-150 group-hover:scale-110 active:scale-95">
+                  <div className="absolute top-1/2 -left-4 -translate-y-1/2 flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-gold bg-plum-dark text-gold-light shadow-luxury transition-transform duration-150 group-hover:scale-110 active:scale-95 select-none">
                     <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </div>
                 </div>
 
                 {/* Instruction pill at bottom */}
-                <div className="pointer-events-none absolute bottom-3.5 inset-x-0 text-center z-20">
+                <div className="pointer-events-none absolute bottom-3.5 inset-x-0 text-center z-20 select-none">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-plum-dark/85 px-3 py-1 text-[10px] text-white/80 backdrop-blur-md border border-white/10">
                     <Wand2 className="h-3 w-3 text-gold" aria-hidden="true" />
-                    Drag handle or click pills
+                    Drag or scroll to transform
                   </span>
                 </div>
               </div>
