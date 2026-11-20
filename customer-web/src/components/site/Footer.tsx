@@ -94,6 +94,9 @@ export default function Footer({ settings }: { settings: PublicSettings }) {
             <Link href="/contact" className="transition-colors hover:text-gold-light">
               Contact
             </Link>
+            <Link href="/admin" className="transition-colors hover:text-gold-light text-white/40">
+              Studio Admin
+            </Link>
           </div>
         </div>
       </div>

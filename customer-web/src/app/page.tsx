@@ -2,14 +2,16 @@ import Link from "next/link";
 import React from "react";
 import { ArrowRight } from "lucide-react";
 import FadeImg from "../components/site/FadeImg";
+import InstagramLookCarousel from "../components/site/InstagramLookCarousel";
 import ParallaxApproach from "../components/site/ParallaxApproach";
 import ParallaxCities from "../components/site/ParallaxCities";
 import ParallaxHero from "../components/site/ParallaxHero";
 import ParallaxMetrics from "../components/site/ParallaxMetrics";
 import ServiceCard from "../components/site/ServiceCard";
-import { getPublicConfig } from "../lib/booking/server";
+import { getPublicConfig, getSiteMedia, getGalleryItems } from "../lib/booking/server";
 import { whatsappLink } from "../lib/booking/types";
-import { SITE_IMAGES } from "../lib/site-images";
+
+export const dynamic = "force-dynamic";
 
 const STEPS = [
   { title: "Pick your service & date", text: "Choose a package and see which dates are free. We take one bride per day." },
@@ -18,16 +20,24 @@ const STEPS = [
 ];
 
 export default async function HomePage() {
-  const { services, settings } = await getPublicConfig();
+  const [{ services, settings }, siteMedia, gallery] = await Promise.all([
+    getPublicConfig(),
+    getSiteMedia(),
+    getGalleryItems(),
+  ]);
+
   const featured = services.slice(0, 3);
   const wa = whatsappLink(settings.whatsappNumber, "Hi Prachi, I'd like to know more about bridal makeup.");
 
   return (
     <main>
-      {/* ---------------- 1. Parallax Hero Section (Like FLITE / Yuna) ---------------- */}
-      <ParallaxHero />
+      {/* ---------------- 1. Parallax Hero Section (with dynamic admin photos) ---------------- */}
+      <ParallaxHero
+        beforeImage={siteMedia.transformation.before}
+        afterImage={siteMedia.transformation.after}
+      />
 
-      {/* ---------------- 2. Parallax Trust & Metrics Strip (Like Eleveight) ---------------- */}
+      {/* ---------------- 2. Parallax Trust & Metrics Strip ---------------- */}
       <ParallaxMetrics />
 
       {/* ---------------- 3. Featured Services ---------------- */}
@@ -60,10 +70,31 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- 4. Sticky Scrollytelling Approach (Like tinyPod / Fusion) ---------------- */}
+      {/* ---------------- 4. Instagram Lookbook Carousels (4 to 6 photos per look) ---------------- */}
+      <section className="section bg-ivory/50 border-y border-sand/60">
+        <div className="container-page">
+          <div className="mx-auto max-w-2xl text-center" data-reveal>
+            <div className="inline-flex items-center gap-2 rounded-full bg-plum/5 px-3.5 py-1 text-xs font-semibold text-plum mb-3">
+              <span className="h-2 w-2 rounded-full bg-gold animate-pulse" />
+              Instagram Lookbook · Carousel Series
+            </div>
+            <h2 className="h-display text-3xl sm:text-4xl text-plum">
+              Swipe through real bride transformations
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Each curated look features 4 to 6 angles — base prep, eye sculpting, heirloom jewellery, and bridal draping.
+            </p>
+          </div>
+          <div className="mt-10" data-reveal>
+            <InstagramLookCarousel items={gallery} />
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- 5. Sticky Scrollytelling Approach ---------------- */}
       <ParallaxApproach />
 
-      {/* ---------------- 5. How booking works ---------------- */}
+      {/* ---------------- 6. How booking works ---------------- */}
       <section className="section">
         <div className="container-page">
           <div className="mx-auto max-w-2xl text-center" data-reveal>
@@ -93,13 +124,13 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- 6. Parallax Cities & Destinations (Like Archar / i-D) ---------------- */}
+      {/* ---------------- 7. Parallax Cities & Destinations ---------------- */}
       <ParallaxCities />
 
-      {/* ---------------- 7. CTA ---------------- */}
+      {/* ---------------- 8. CTA ---------------- */}
       <section className="container-page pb-20">
         <div className="relative isolate overflow-hidden rounded-[2.5rem] bg-plum px-6 py-14 text-center text-white sm:px-12 sm:py-20 shadow-2xl" data-reveal>
-          <FadeImg src={SITE_IMAGES.mehendi} alt="" sizes="1100px" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-30" />
+          <FadeImg src={siteMedia.mehendi} alt="" sizes="1100px" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-30" />
           <div aria-hidden="true" className="absolute inset-0 -z-10 bg-gradient-to-br from-plum-dark/95 via-plum/85 to-plum-light/75" />
           <p className="eyebrow text-gold-light">Questions first?</p>
           <h2 className="mx-auto mt-3 max-w-2xl font-serif text-4xl font-medium sm:text-5xl">Let&apos;s talk about your day</h2>

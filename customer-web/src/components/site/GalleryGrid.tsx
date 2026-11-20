@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Expand, Loader2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Expand, Layers, Loader2, X } from "lucide-react";
 import type { GalleryPhoto } from "../../lib/site-images";
 import FadeImg from "./FadeImg";
 
@@ -55,6 +55,12 @@ export default function GalleryGrid({ items }: { items: GalleryPhoto[] }) {
                 />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-plum-dark/75 via-transparent to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+              {item.images && item.images.length > 1 && (
+                <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-plum-dark/85 px-2.5 py-1 text-[11px] font-semibold text-white shadow backdrop-blur-md">
+                  <Layers className="h-3 w-3 text-gold-light" />
+                  {item.images.length} photos
+                </span>
+              )}
               <figcaption className="absolute inset-x-0 bottom-0 p-3 text-white sm:p-4">
                 <span className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-light sm:block">{item.category}</span>
                 <span className="mt-0.5 block font-serif text-sm font-semibold leading-snug sm:text-lg">{item.title}</span>

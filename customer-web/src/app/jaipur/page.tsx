@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import CityPage from "../../components/site/CityPage";
-import { SITE_IMAGES } from "../../lib/site-images";
+import { getSiteMedia } from "../../lib/booking/server";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Bridal Makeup Artist for Jaipur Weddings",
   description: "Makeovers by Prachi travels from Jodhpur for bridal and party makeup in Jaipur. Transparent travel fee, book online.",
 };
 
-export default function Page() {
+export default async function Page() {
+  const siteMedia = await getSiteMedia();
   return (
     <CityPage
       path="/jaipur"
@@ -15,7 +18,7 @@ export default function Page() {
       title="Bridal makeup for your Jaipur wedding"
       intro="We travel from Jodhpur to Jaipur for weddings and events, with the same team and products we use at home."
       cityKey="jaipur" bookCity="Jaipur"
-      heroImage={SITE_IMAGES.cities.jaipur}
+      heroImage={siteMedia.cities.jaipur}
       highlights={[
         "Bridal, engagement and family makeup at your venue or hotel in Jaipur.",
         "A fixed travel fee, shown upfront before you pay anything.",

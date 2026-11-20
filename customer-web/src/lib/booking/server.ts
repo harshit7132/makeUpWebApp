@@ -5,6 +5,8 @@ import { unstable_cache } from "next/cache";
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { adminDb } from "../firebase-admin";
 import type { PublicConfig, PublicService, PublicSettings } from "./types";
+import { DEFAULT_SITE_IMAGES, DEFAULT_GALLERY, type SiteMedia, type GalleryPhoto, mergeSiteMedia } from "../site-images";
+import { getDevSiteMedia, getDevGallery } from "./dev-store";
 
 export const BOOKING_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -211,6 +213,49 @@ export async function getApprovedReviews(limit = 50): Promise<ApprovedReview[]> 
     console.error("[reviews] Could not load reviews:", err?.message || err);
     return [];
   }
+}
+
+/** Loads customizable photography across the site (people, hero, transformation, cities) */
+export async function getSiteMedia(): Promise<SiteMedia> {
+  try {
+    const db = adminDb();
+    const snap = await db.doc("settings/site_media").get();
+    if (snap.exists) {
+      return mergeSiteMedia(snap.data() as Partial<SiteMedia>);
+    }
+  } catch {
+    // In dev mode when offline, read from dev-store
+    return getDevSiteMedia();
+  }
+  return getDevSiteMedia();
+}
+
+/** Loads portfolio gallery looks and Instagram-style carousels */
+export async function getGalleryItems(): Promise<GalleryPhoto[]> {
+  try {
+    const db = adminDb();
+    const snap = await db.collection("gallery").orderBy("sortOrder", "asc").get();
+    if (!snap.empty) {
+      return snap.docs.map((doc) => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          title: str(d.title),
+          category: (str(d.category) as any) || "Bridal",
+          desc: str(d.desc),
+          src: str(d.src) || DEFAULT_SITE_IMAGES.hero,
+          full: str(d.full) || str(d.src) || DEFAULT_SITE_IMAGES.hero,
+          ratio: num(d.ratio, 2 / 3),
+          images: Array.isArray(d.images) && d.images.length > 0 ? d.images.map(String) : undefined,
+          sortOrder: num(d.sortOrder, 99),
+        };
+      });
+    }
+  } catch {
+    // In dev mode when offline, read from dev-store
+    return getDevGallery();
+  }
+  return getDevGallery();
 }
 
 // ---------------------------------------------------------------------------
