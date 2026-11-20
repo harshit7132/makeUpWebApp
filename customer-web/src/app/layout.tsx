@@ -4,6 +4,7 @@ import { Montserrat, Playfair_Display } from "next/font/google";
 import Header from "../components/Header";
 import Footer from "../components/site/Footer";
 import RevealObserver from "../components/site/RevealObserver";
+import SmoothScrollProvider from "../components/site/SmoothScrollProvider";
 import WhatsAppFab from "../components/site/WhatsAppFab";
 import { getPublicConfig } from "../lib/booking/server";
 import { whatsappLink } from "../lib/booking/types";
@@ -55,22 +56,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className={`${display.variable} ${body.variable}`}>
       <body className="flex min-h-screen flex-col bg-champagne font-sans text-plum antialiased">
-        <noscript>
-          <style>{".img-fade{opacity:1}"}</style>
-        </noscript>
-        <a
-          href="#main"
-          className="sr-only z-[70] rounded-full bg-plum px-4 py-2 text-sm text-gold-light focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
-        >
-          Skip to content
-        </a>
-        <Header whatsappHref={wa} />
-        <div id="main" className="flex-1">
-          {children}
-        </div>
-        <Footer settings={settings} />
-        <WhatsAppFab whatsappNumber={settings.whatsappNumber} />
-        <RevealObserver />
+        <SmoothScrollProvider>
+          <noscript>
+            <style>{".img-fade{opacity:1}"}</style>
+          </noscript>
+          <a
+            href="#main"
+            className="sr-only z-[70] rounded-full bg-plum px-4 py-2 text-sm text-gold-light focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+          >
+            Skip to content
+          </a>
+          <Header whatsappHref={wa} />
+          <div id="main" className="flex-1">
+            {children}
+          </div>
+          <Footer settings={settings} />
+          <WhatsAppFab whatsappNumber={settings.whatsappNumber} />
+          <RevealObserver />
+        </SmoothScrollProvider>
       </body>
     </html>
   );
