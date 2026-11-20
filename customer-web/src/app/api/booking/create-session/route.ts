@@ -3,6 +3,8 @@ import { FieldValue, type DocumentReference } from "firebase-admin/firestore";
 import { adminDb } from "../../../../lib/firebase-admin";
 import {
   clientIp,
+  DEMO_SERVICES,
+  DEMO_SETTINGS,
   generateBookingId,
   isHoldActive,
   jsonError,
@@ -76,27 +78,60 @@ export async function POST(req: Request) {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "Please enter a valid email address.");
     const notes = text(body.notes, "notes", 1, 1000, false);
 
-    const db = adminDb();
-    const [serviceSnap, { settings, exists: settingsExist }] = await Promise.all([
-      db.doc(`services/${serviceId}`).get(),
-      loadSettings(db),
-    ]);
+    let db: any;
+    let service: any;
+    let basePrice: number = 25000;
+    let serviceTitle: string = "Signature Bridal Makeup";
+    let settings = DEMO_SETTINGS;
 
-    const service = serviceSnap.data();
-    if (!serviceSnap.exists || !service || service.active !== true) {
-      throw new HttpError(400, "That service is no longer available. Please choose another.");
-    }
-    const basePrice = Number(service.price);
-    if (!Number.isFinite(basePrice) || basePrice <= 0) {
-      throw new HttpError(400, "This service is priced on request. Please contact us on WhatsApp to book it.");
-    }
-    if (!settingsExist || !settings.upiId) {
-      console.error("[create-session] settings/business missing or has no upiId");
-      throw new HttpError(503, "Online booking is temporarily unavailable. Please contact us on WhatsApp.");
+    try {
+      db = adminDb();
+      const [serviceSnap, loaded] = await Promise.all([
+        db.doc(`services/${serviceId}`).get(),
+        loadSettings(db),
+      ]);
+
+      service = serviceSnap.data();
+      if (!serviceSnap.exists || !service || service.active !== true) {
+        throw new HttpError(400, "That service is no longer available. Please choose another.");
+      }
+      basePrice = Number(service.price);
+      if (!Number.isFinite(basePrice) || basePrice <= 0) {
+        throw new HttpError(400, "This service is priced on request. Please contact us on WhatsApp to book it.");
+      }
+      if (!loaded.exists || !loaded.settings.upiId) {
+        console.error("[create-session] settings/business missing or has no upiId");
+        throw new HttpError(503, "Online booking is temporarily unavailable. Please contact us on WhatsApp.");
+      }
+      settings = loaded.settings;
+      serviceTitle = String(service.title || "Makeup service");
+    } catch (err: any) {
+      if (err instanceof HttpError) throw err;
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[create-session] Firestore offline in dev, creating preview booking session:", err?.message || err);
+        const matchedDemo = DEMO_SERVICES.find((s) => s.id === serviceId) || DEMO_SERVICES[0];
+        basePrice = matchedDemo.price || 25000;
+        serviceTitle = matchedDemo.title;
+        settings = DEMO_SETTINGS;
+
+        const { totalAmount, depositAmount } = computePrice(basePrice, city, settings);
+        const demoBookingId = generateBookingId();
+        const demoExpiresAt = Date.now() + settings.holdMinutes * 60 * 1000;
+
+        const response: CreateSessionResponse = {
+          bookingId: demoBookingId,
+          totalAmount,
+          depositAmount,
+          expiresAt: demoExpiresAt,
+          upiId: settings.upiId,
+          payeeName: settings.payeeName,
+        };
+        return NextResponse.json(response);
+      }
+      throw err;
     }
 
     const { travelFee, totalAmount, depositAmount } = computePrice(basePrice, city, settings);
-    const serviceTitle = String(service.title || "Makeup service");
 
     const nowMs = Date.now();
     const expiresAtMs = nowMs + settings.holdMinutes * 60 * 1000;

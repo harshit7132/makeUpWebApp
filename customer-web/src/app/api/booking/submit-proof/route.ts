@@ -60,7 +60,20 @@ export async function POST(req: Request) {
   if (blob.size > MAX_FILE_BYTES) return jsonError("The screenshot is larger than 5 MB. Please upload a smaller image.", 400);
 
   try {
-    const db = adminDb();
+    let db: any;
+    try {
+      db = adminDb();
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[submit-proof] Database offline in dev, accepting proof for preview:", err);
+        return NextResponse.json({
+          ok: true,
+          bookingId,
+          message: "Payment proof submitted successfully (preview mode).",
+        });
+      }
+      throw err;
+    }
     const bookingRef = db.doc(`bookings/${bookingId}`);
     const nowMs = Date.now();
 
