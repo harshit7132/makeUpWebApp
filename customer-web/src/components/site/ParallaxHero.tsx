@@ -3,7 +3,6 @@
 import Link from "next/link";
 import React, { useRef, useEffect, useCallback, useState } from "react";
 import { ArrowLeftRight, ArrowRight, Sparkles, Star, Wand2 } from "lucide-react";
-import { motion, useScroll, useReducedMotion } from "framer-motion";
 import AvailabilityChecker from "./AvailabilityChecker";
 import FadeImg from "./FadeImg";
 import { SITE_IMAGES } from "../../lib/site-images";
@@ -21,13 +20,13 @@ export default function ParallaxHero({
   const sliderFrameRef = useRef<HTMLDivElement>(null);
   const dividerRef = useRef<HTMLDivElement>(null);
   const afterLayerRef = useRef<HTMLDivElement>(null);
-  const prefersReduced = useReducedMotion();
 
   // Active view indicator for the pill buttons ('before' | 'split' | 'after')
   const [activeView, setActiveView] = useState<"before" | "split" | "after">("split");
 
   const isDraggingRef = useRef(false);
   const currentPosRef = useRef(50);
+  const lastScrollYRef = useRef(0);
 
   // Apply slider position directly to DOM (Zero React re-renders = True 120 FPS buttery smooth)
   const applyPosition = useCallback((pos: number, animate = false) => {
@@ -37,8 +36,8 @@ export default function ParallaxHero({
 
     if (divider && afterLayer) {
       if (animate) {
-        divider.style.transition = "left 380ms cubic-bezier(0.16, 1, 0.3, 1)";
-        afterLayer.style.transition = "clip-path 380ms cubic-bezier(0.16, 1, 0.3, 1)";
+        divider.style.transition = "left 350ms cubic-bezier(0.16, 1, 0.3, 1)";
+        afterLayer.style.transition = "clip-path 350ms cubic-bezier(0.16, 1, 0.3, 1)";
       } else {
         divider.style.transition = "none";
         afterLayer.style.transition = "none";
@@ -66,7 +65,6 @@ export default function ParallaxHero({
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
-    // Prevent browser native image drag and text selection
     e.preventDefault();
     isDraggingRef.current = true;
     handlePointerMove(e.clientX);
@@ -96,37 +94,35 @@ export default function ParallaxHero({
     if (view === "after") applyPosition(100, true);
   };
 
-  // Scroll sync: gentle, calm subtle drift on page scroll (never fast or erratic)
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"],
-  });
-
+  // Fast, responsive bidirectional scroll:
+  // Scroll DOWN -> completes from middle (50%) to RIGHT (100%)
+  // Scroll UP   -> completes from middle (50%) to LEFT (0%)
   useEffect(() => {
-    // Initial 50% split setup
     applyPosition(50, false);
+    lastScrollYRef.current = window.scrollY;
 
-    if (prefersReduced) return;
-
-    let rafId = 0;
-    const unsubscribe = scrollYProgress.on("change", (latest) => {
+    const onScroll = () => {
       if (isDraggingRef.current) return;
+      const currentScrollY = window.scrollY;
+      const delta = currentScrollY - lastScrollYRef.current;
+      lastScrollYRef.current = currentScrollY;
 
-      cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => {
-        // Calm, gentle progression from 50% to 68% across the full hero scroll
-        // Clamped so it never whips violently or snaps across the face
-        const normalized = Math.max(0, Math.min(1, latest / 0.8));
-        const pos = 50 + normalized * 18;
-        applyPosition(pos, false);
-      });
-    });
+      // Only drive slider while user is within the hero viewport area
+      if (currentScrollY < 600 && Math.abs(delta) > 0.5) {
+        // Fast responsive step: scrolls smoothly to full completion
+        const step = delta * 0.32;
+        const newPos = Math.max(0, Math.min(100, currentPosRef.current + step));
+        applyPosition(newPos, false);
 
-    return () => {
-      unsubscribe();
-      cancelAnimationFrame(rafId);
+        if (newPos < 20) setActiveView("before");
+        else if (newPos > 80) setActiveView("after");
+        else setActiveView("split");
+      }
     };
-  }, [applyPosition, prefersReduced, scrollYProgress]);
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [applyPosition]);
 
   return (
     <section
@@ -293,12 +289,12 @@ export default function ParallaxHero({
                 </div>
 
                 {/* Floating Status Badges - Placed where frame is flat and wide (NEVER CROPPED) */}
-                <div className="pointer-events-none absolute bottom-12 left-5 z-20 select-none">
+                <div className="pointer-events-none absolute bottom-12 left-4 z-20 select-none">
                   <span className="rounded-full border border-gold/40 bg-gold/90 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase text-plum-dark backdrop-blur-md shadow-md">
                     AFTER · Royal Bride
                   </span>
                 </div>
-                <div className="pointer-events-none absolute bottom-12 right-5 z-20 select-none">
+                <div className="pointer-events-none absolute bottom-12 right-4 z-20 select-none">
                   <span className="rounded-full border border-white/30 bg-plum-dark/90 px-3 py-1 text-[11px] font-medium tracking-wider uppercase text-white backdrop-blur-md shadow-md">
                     BEFORE · Bare Skin
                   </span>
@@ -323,7 +319,7 @@ export default function ParallaxHero({
                 <div className="pointer-events-none absolute bottom-3.5 inset-x-0 text-center z-20 select-none">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-plum-dark/85 px-3 py-1 text-[10px] text-white/80 backdrop-blur-md border border-white/10">
                     <Wand2 className="h-3 w-3 text-gold" aria-hidden="true" />
-                    Drag handle or click pills
+                    Drag handle or scroll up/down
                   </span>
                 </div>
               </div>
