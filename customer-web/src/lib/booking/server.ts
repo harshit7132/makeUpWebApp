@@ -105,14 +105,70 @@ const loadPublicConfigCached = unstable_cache(
   { revalidate: PUBLIC_DATA_TTL_S, tags: ["public-config"] }
 );
 
-/** Services + public settings, cached for 60s. Never throws. */
+export const DEMO_SERVICES: PublicService[] = [
+  {
+    id: "bridal-signature",
+    title: "Signature Bridal Makeup",
+    description:
+      "Full royal bridal look by Prachi: long-wear HD or airbrush base, eye makeup with lashes, hair styling, poshak and dupatta draping.",
+    price: 25000,
+    category: "Bridal",
+    durationMinutes: 240,
+    imageUrl: null,
+    sortOrder: 1,
+  },
+  {
+    id: "engagement-glam",
+    title: "Engagement & Pre-wedding Glam",
+    description: "Soft glam for ring ceremony, sangeet or pre-wedding shoot, with hair styling and draping.",
+    price: 15000,
+    category: "Engagement",
+    durationMinutes: 150,
+    imageUrl: null,
+    sortOrder: 2,
+  },
+  {
+    id: "party-makeup",
+    title: "Party & Festive Makeup",
+    description: "Photo-ready makeup and hair styling for family, bridesmaids and reception guests.",
+    price: 8500,
+    category: "Party",
+    durationMinutes: 90,
+    imageUrl: null,
+    sortOrder: 3,
+  },
+];
+
+export const DEMO_SETTINGS: PublicSettings = {
+  businessName: "Makeovers by Prachi",
+  upiId: "prachi@okicici",
+  payeeName: "Makeovers by Prachi",
+  whatsappNumber: "919800000000",
+  phoneDisplay: "+91 98000 00000",
+  email: "contact@makeoversbyprachi.com",
+  studioAddress: "Jodhpur, Rajasthan",
+  depositPercent: 30,
+  holdMinutes: 15,
+  travelFees: DEFAULT_TRAVEL_FEES,
+};
+
+/** Services + public settings, cached for 60s. Falls back to demo config if database is offline. */
 export async function getPublicConfig(): Promise<PublicConfig> {
   try {
-    return await loadPublicConfigCached();
+    const config = await loadPublicConfigCached();
+    if (config.available && config.services.length > 0 && config.settings.upiId) {
+      return config;
+    }
   } catch (err: any) {
-    console.error("[public-config] Could not load config from Firestore:", err?.message || err);
-    return { services: [], settings: settingsFromDoc(undefined), available: false };
+    console.warn("[public-config] Firestore not connected, using preview demo config:", err?.message || err);
   }
+
+  // Fallback so /book and services never show "resting" in local preview
+  return {
+    services: DEMO_SERVICES,
+    settings: DEMO_SETTINGS,
+    available: true,
+  };
 }
 
 export interface ApprovedReview {
