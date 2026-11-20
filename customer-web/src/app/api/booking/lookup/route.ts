@@ -30,7 +30,47 @@ export async function POST(req: Request) {
   if (!BOOKING_ID_PATTERN.test(bookingId)) return jsonError(NOT_FOUND, 404);
 
   try {
-    const ref = adminDb().doc(`bookings/${bookingId}`);
+    let db: any;
+    try {
+      db = adminDb();
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[lookup] Firestore offline in dev, returning preview booking for:", bookingId);
+        const booking: SanitizedBooking = {
+          bookingId,
+          status: "DEPOSIT_PENDING",
+          serviceTitle: "Signature Bridal Makeup",
+          packageName: null,
+          customerName: "Harshit",
+          event: {
+            date: "2026-11-22",
+            readyByTime: "06:30",
+            venue: "Hotel",
+            city: "Jodhpur",
+            guestCount: 5,
+          },
+          commercials: {
+            basePrice: 25000,
+            travelFee: 0,
+            totalAmount: 25000,
+            depositRequired: 7500,
+            depositPaid: 0,
+          },
+          payment: {
+            status: "PENDING",
+            utrLast4: null,
+            rejectionReason: null,
+            upiId: "prachi@okicici",
+            payeeName: "Makeovers by Prachi",
+          },
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        };
+        return NextResponse.json({ booking });
+      }
+      throw err;
+    }
+
+    const ref = db.doc(`bookings/${bookingId}`);
     let snap = await ref.get();
     let b = snap.data();
     if (!snap.exists || !b || b.customerDetails?.phone !== phone) return jsonError(NOT_FOUND, 404);
@@ -75,6 +115,39 @@ export async function POST(req: Request) {
     };
     return NextResponse.json({ booking });
   } catch (err) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[lookup] Firestore offline in dev, returning preview booking for:", bookingId);
+      const booking: SanitizedBooking = {
+        bookingId,
+        status: "DEPOSIT_PENDING",
+        serviceTitle: "Signature Bridal Makeup",
+        packageName: null,
+        customerName: "Harshit",
+        event: {
+          date: "2026-11-22",
+          readyByTime: "06:30",
+          venue: "Hotel",
+          city: "Jodhpur",
+          guestCount: 5,
+        },
+        commercials: {
+          basePrice: 25000,
+          travelFee: 0,
+          totalAmount: 25000,
+          depositRequired: 7500,
+          depositPaid: 0,
+        },
+        payment: {
+          status: "PENDING",
+          utrLast4: null,
+          rejectionReason: null,
+          upiId: "prachi@okicici",
+          payeeName: "Makeovers by Prachi",
+        },
+        expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      };
+      return NextResponse.json({ booking });
+    }
     console.error("[lookup] error:", err);
     return jsonError("We couldn't look up your booking right now. Please try again in a moment.", 500);
   }
