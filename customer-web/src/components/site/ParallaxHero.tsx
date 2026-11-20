@@ -254,7 +254,8 @@ export default function ParallaxHero({
                 {/* Layer 1: BEFORE Image (Underneath) */}
                 <div className="pointer-events-none absolute inset-0 h-full w-full select-none">
                   <FadeImg
-                    src={beforeImage}
+                    src={beforeImage || SITE_IMAGES.transformation.before}
+                    fallbackSrc={SITE_IMAGES.transformation.before}
                     alt="Bride before makeup - clean skin and natural prep"
                     sizes="420px"
                     draggable={false}
@@ -276,7 +277,8 @@ export default function ParallaxHero({
                   className="pointer-events-none absolute inset-0 h-full w-full select-none"
                 >
                   <FadeImg
-                    src={afterImage}
+                    src={afterImage || SITE_IMAGES.transformation.after}
+                    fallbackSrc={SITE_IMAGES.transformation.after}
                     alt="Bride after makeup - royal Rajasthani bridal look"
                     sizes="420px"
                     draggable={false}

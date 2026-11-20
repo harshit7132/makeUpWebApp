@@ -15,7 +15,7 @@ import {
   Calendar,
   Layers,
 } from "lucide-react";
-import type { GalleryPhoto } from "../../lib/site-images";
+import { DEFAULT_SITE_IMAGES, type GalleryPhoto } from "../../lib/site-images";
 import FadeImg from "./FadeImg";
 
 interface Props {
@@ -119,6 +119,7 @@ function SingleInstagramPost({
             <div className="h-full w-full rounded-full bg-white p-[1.5px]">
               <FadeImg
                 src={images[0]}
+                fallbackSrc={DEFAULT_SITE_IMAGES.hero}
                 alt="Makeovers by Prachi"
                 sizes="40px"
                 className="h-full w-full rounded-full object-cover"
@@ -168,6 +169,7 @@ function SingleInstagramPost({
             <div key={imgUrl + idx} className="relative h-full w-full shrink-0">
               <FadeImg
                 src={imgUrl}
+                fallbackSrc={post.src || DEFAULT_SITE_IMAGES.hero}
                 alt={`${post.title} — Slide ${idx + 1}`}
                 sizes="(min-width: 640px) 580px, 100vw"
                 className="h-full w-full object-cover"

@@ -231,9 +231,10 @@ export function serviceImage(
  * Normalizes image URLs from various sources, including Google Drive share links.
  * Converts shareable Google Drive links (e.g. drive.google.com/file/d/XYZ/view)
  * into direct web image URLs (lh3.googleusercontent.com/d/XYZ).
+ * If the URL is empty or invalid, falls back to the provided default fallback URL (else condition).
  */
-export function normalizeImageUrl(url: string | null | undefined): string {
-  if (!url) return "";
+export function normalizeImageUrl(url: string | null | undefined, fallback: string = ""): string {
+  if (!url || typeof url !== "string" || !url.trim()) return fallback;
   const trimmed = url.trim();
   const gdriveMatch = trimmed.match(
     /(?:drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?id=)|lh3\.googleusercontent\.com\/d\/)([a-zA-Z0-9_-]+)/
@@ -244,31 +245,31 @@ export function normalizeImageUrl(url: string | null | undefined): string {
   return trimmed;
 }
 
-/** Merges custom admin photos over defaults */
+/** Merges custom admin photos over defaults, ensuring every photo has an else fallback */
 export function mergeSiteMedia(custom?: Partial<SiteMedia> | null): SiteMedia {
   if (!custom) return DEFAULT_SITE_IMAGES;
   return {
-    hero: normalizeImageUrl(custom.hero) || DEFAULT_SITE_IMAGES.hero,
+    hero: normalizeImageUrl(custom.hero, DEFAULT_SITE_IMAGES.hero),
     transformation: {
-      before: normalizeImageUrl(custom.transformation?.before) || DEFAULT_SITE_IMAGES.transformation.before,
-      after: normalizeImageUrl(custom.transformation?.after) || DEFAULT_SITE_IMAGES.transformation.after,
+      before: normalizeImageUrl(custom.transformation?.before, DEFAULT_SITE_IMAGES.transformation.before),
+      after: normalizeImageUrl(custom.transformation?.after, DEFAULT_SITE_IMAGES.transformation.after),
     },
-    detailEyes: normalizeImageUrl(custom.detailEyes) || DEFAULT_SITE_IMAGES.detailEyes,
-    detailPalette: normalizeImageUrl(custom.detailPalette) || DEFAULT_SITE_IMAGES.detailPalette,
-    detailJewellery: normalizeImageUrl(custom.detailJewellery) || DEFAULT_SITE_IMAGES.detailJewellery,
-    mehendi: normalizeImageUrl(custom.mehendi) || DEFAULT_SITE_IMAGES.mehendi,
+    detailEyes: normalizeImageUrl(custom.detailEyes, DEFAULT_SITE_IMAGES.detailEyes),
+    detailPalette: normalizeImageUrl(custom.detailPalette, DEFAULT_SITE_IMAGES.detailPalette),
+    detailJewellery: normalizeImageUrl(custom.detailJewellery, DEFAULT_SITE_IMAGES.detailJewellery),
+    mehendi: normalizeImageUrl(custom.mehendi, DEFAULT_SITE_IMAGES.mehendi),
     services: {
-      bridal: normalizeImageUrl(custom.services?.bridal) || DEFAULT_SITE_IMAGES.services.bridal,
-      engagement: normalizeImageUrl(custom.services?.engagement) || DEFAULT_SITE_IMAGES.services.engagement,
-      party: normalizeImageUrl(custom.services?.party) || DEFAULT_SITE_IMAGES.services.party,
-      destination: normalizeImageUrl(custom.services?.destination) || DEFAULT_SITE_IMAGES.services.destination,
-      default: normalizeImageUrl(custom.services?.default) || DEFAULT_SITE_IMAGES.services.default,
+      bridal: normalizeImageUrl(custom.services?.bridal, DEFAULT_SITE_IMAGES.services.bridal),
+      engagement: normalizeImageUrl(custom.services?.engagement, DEFAULT_SITE_IMAGES.services.engagement),
+      party: normalizeImageUrl(custom.services?.party, DEFAULT_SITE_IMAGES.services.party),
+      destination: normalizeImageUrl(custom.services?.destination, DEFAULT_SITE_IMAGES.services.destination),
+      default: normalizeImageUrl(custom.services?.default, DEFAULT_SITE_IMAGES.services.default),
     },
     cities: {
-      jodhpur: normalizeImageUrl(custom.cities?.jodhpur) || DEFAULT_SITE_IMAGES.cities.jodhpur,
-      jaipur: normalizeImageUrl(custom.cities?.jaipur) || DEFAULT_SITE_IMAGES.cities.jaipur,
-      udaipur: normalizeImageUrl(custom.cities?.udaipur) || DEFAULT_SITE_IMAGES.cities.udaipur,
-      destination: normalizeImageUrl(custom.cities?.destination) || DEFAULT_SITE_IMAGES.cities.destination,
+      jodhpur: normalizeImageUrl(custom.cities?.jodhpur, DEFAULT_SITE_IMAGES.cities.jodhpur),
+      jaipur: normalizeImageUrl(custom.cities?.jaipur, DEFAULT_SITE_IMAGES.cities.jaipur),
+      udaipur: normalizeImageUrl(custom.cities?.udaipur, DEFAULT_SITE_IMAGES.cities.udaipur),
+      destination: normalizeImageUrl(custom.cities?.destination, DEFAULT_SITE_IMAGES.cities.destination),
     },
   };
 }

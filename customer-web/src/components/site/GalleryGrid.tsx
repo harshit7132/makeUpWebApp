@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Expand, Layers, Loader2, X } from "lucide-react";
-import type { GalleryPhoto } from "../../lib/site-images";
+import { DEFAULT_SITE_IMAGES, type GalleryPhoto } from "../../lib/site-images";
 import FadeImg from "./FadeImg";
 
 export default function GalleryGrid({ items }: { items: GalleryPhoto[] }) {
@@ -49,6 +49,7 @@ export default function GalleryGrid({ items }: { items: GalleryPhoto[] }) {
               <div style={{ aspectRatio: String(item.ratio) }}>
                 <FadeImg
                   src={item.src}
+                  fallbackSrc={DEFAULT_SITE_IMAGES.hero}
                   alt={item.title}
                   sizes="(min-width: 1024px) 360px, 50vw"
                   className="h-full w-full object-cover transition-transform duration-700 ease-out-expo group-hover:scale-[1.04]"
@@ -205,6 +206,9 @@ function Lightbox({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={item.full}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = DEFAULT_SITE_IMAGES.hero;
+            }}
             alt={item.title}
             className="max-h-[calc(100dvh-11rem)] w-auto max-w-full select-none rounded-xl object-contain shadow-float"
             draggable={false}

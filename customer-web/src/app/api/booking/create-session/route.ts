@@ -11,8 +11,9 @@ import {
   loadSettings,
   rateLimit,
 } from "../../../../lib/booking/server";
-import { computePrice, normalizePhone, todayIST, type CreateSessionResponse } from "../../../../lib/booking/types";
+import { computePrice, normalizePhone, todayIST, type CreateSessionResponse, type SanitizedBooking } from "../../../../lib/booking/types";
 import { mirrorPaymentSessionStarted } from "../../../../lib/financial/sheets-payment-mirror-engine";
+import { devBookings } from "../../../../lib/booking/dev-store";
 
 export const dynamic = "force-dynamic";
 
@@ -114,15 +115,47 @@ export async function POST(req: Request) {
         serviceTitle = matchedDemo.title;
         settings = DEMO_SETTINGS;
 
-        const { totalAmount, depositAmount } = computePrice(basePrice, city, settings);
+        const { travelFee, totalAmount, depositAmount } = computePrice(basePrice, city, settings);
         const demoBookingId = generateBookingId();
-        const demoExpiresAt = Date.now() + settings.holdMinutes * 60 * 1000;
+        const demoExpiresAtMs = Date.now() + settings.holdMinutes * 60 * 1000;
+        const demoExpiresAtIso = new Date(demoExpiresAtMs).toISOString();
+
+        const devBooking: SanitizedBooking = {
+          bookingId: demoBookingId,
+          status: "DEPOSIT_PENDING",
+          serviceTitle,
+          packageName: packageName || null,
+          customerName: fullName.split(" ")[0],
+          event: {
+            date,
+            readyByTime: readyTime,
+            venue,
+            city,
+            guestCount,
+          },
+          commercials: {
+            basePrice,
+            travelFee,
+            totalAmount,
+            depositRequired: depositAmount,
+            depositPaid: 0,
+          },
+          payment: {
+            status: "PENDING",
+            utrLast4: null,
+            rejectionReason: null,
+            upiId: settings.upiId,
+            payeeName: settings.payeeName,
+          },
+          expiresAt: demoExpiresAtIso,
+        };
+        devBookings.set(demoBookingId, devBooking);
 
         const response: CreateSessionResponse = {
           bookingId: demoBookingId,
           totalAmount,
           depositAmount,
-          expiresAt: demoExpiresAt,
+          expiresAt: demoExpiresAtMs,
           upiId: settings.upiId,
           payeeName: settings.payeeName,
         };
@@ -138,74 +171,128 @@ export async function POST(req: Request) {
     const expiresAtIso = new Date(expiresAtMs).toISOString();
     const calRef = db.doc(`calendar/${date}`);
 
-    const bookingId = await db.runTransaction(async (tx) => {
-      // ---- reads (all reads must happen before any write) ----
-      const calSnap = await tx.get(calRef);
-      const cal = calSnap.data() as { status?: string; bookingId?: string; expiresAt?: string } | undefined;
-      let previousToExpire: DocumentReference | null = null;
+    let bookingId: string;
+    try {
+      bookingId = await db.runTransaction(async (tx) => {
+        // ---- reads (all reads must happen before any write) ----
+        const calSnap = await tx.get(calRef);
+        const cal = calSnap.data() as { status?: string; bookingId?: string; expiresAt?: string } | undefined;
+        let previousToExpire: DocumentReference | null = null;
 
-      if (cal) {
-        if (cal.status === "BOOKED" || cal.status === "BLOCKED") {
-          throw new HttpError(409, "This date is already taken. Please choose another date.");
-        }
-        if (cal.status === "HOLD" && cal.bookingId) {
-          const prevRef = db.doc(`bookings/${cal.bookingId}`);
-          const prevSnap = await tx.get(prevRef);
-          const prev = prevSnap.data();
-          if (isHoldActive(cal, nowMs)) {
-            const samePerson = prev?.customerDetails?.phone === phone;
-            if (samePerson && prev?.status === "DEPOSIT_PENDING") {
-              // Same customer re-taking their own unexpired hold (e.g. pressed Back
-              // and changed details): release the old one and issue a fresh hold.
+        if (cal) {
+          if (cal.status === "BOOKED" || cal.status === "BLOCKED") {
+            throw new HttpError(409, "This date is already taken. Please choose another date.");
+          }
+          if (cal.status === "HOLD" && cal.bookingId) {
+            const prevRef = db.doc(`bookings/${cal.bookingId}`);
+            const prevSnap = await tx.get(prevRef);
+            const prev = prevSnap.data();
+            if (isHoldActive(cal, nowMs)) {
+              const samePerson = prev?.customerDetails?.phone === phone;
+              if (samePerson && prev?.status === "DEPOSIT_PENDING") {
+                // Same customer re-taking their own unexpired hold (e.g. pressed Back
+                // and changed details): release the old one and issue a fresh hold.
+                previousToExpire = prevRef;
+              } else if (samePerson && prev?.status === "PAYMENT_PROOF_SUBMITTED") {
+                throw new HttpError(
+                  409,
+                  `You already have a booking for this date (${cal.bookingId}) awaiting payment verification. Track it on the Track booking page.`
+                );
+              } else {
+                throw new HttpError(409, "This date is already taken. Please choose another date.");
+              }
+            } else if (prev?.status === "DEPOSIT_PENDING") {
+              // Lazy expiry of a lapsed hold.
               previousToExpire = prevRef;
-            } else if (samePerson && prev?.status === "PAYMENT_PROOF_SUBMITTED") {
-              throw new HttpError(
-                409,
-                `You already have a booking for this date (${cal.bookingId}) awaiting payment verification. Track it on the Track booking page.`
-              );
-            } else {
-              throw new HttpError(409, "This date is already taken. Please choose another date.");
             }
-          } else if (prev?.status === "DEPOSIT_PENDING") {
-            // Lazy expiry of a lapsed hold.
-            previousToExpire = prevRef;
           }
         }
-      }
 
-      let newId = "";
-      for (let i = 0; i < 6 && !newId; i++) {
-        const candidate = generateBookingId();
-        const snap = await tx.get(db.doc(`bookings/${candidate}`));
-        if (!snap.exists) newId = candidate;
-      }
-      if (!newId) throw new HttpError(500, "Could not create a booking reference. Please try again.");
+        let newId = "";
+        for (let i = 0; i < 6 && !newId; i++) {
+          const candidate = generateBookingId();
+          const snap = await tx.get(db.doc(`bookings/${candidate}`));
+          if (!snap.exists) newId = candidate;
+        }
+        if (!newId) throw new HttpError(500, "Could not create a booking reference. Please try again.");
 
-      // ---- writes ----
-      if (previousToExpire) {
-        tx.update(previousToExpire, {
-          status: "EXPIRED",
-          "payment.status": "EXPIRED",
+        // ---- writes ----
+        if (previousToExpire) {
+          tx.update(previousToExpire, {
+            status: "EXPIRED",
+            "payment.status": "EXPIRED",
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+
+        tx.set(calRef, {
+          status: "HOLD",
+          bookingId: newId,
+          expiresAt: expiresAtIso,
           updatedAt: FieldValue.serverTimestamp(),
         });
-      }
 
-      tx.set(calRef, {
-        status: "HOLD",
-        bookingId: newId,
-        expiresAt: expiresAtIso,
-        updatedAt: FieldValue.serverTimestamp(),
+        tx.create(db.doc(`bookings/${newId}`), {
+          bookingId: newId,
+          status: "DEPOSIT_PENDING",
+          customerDetails: { fullName, phone, email },
+          event: { type: serviceTitle, date, readyByTime: readyTime, venue, city, guestCount },
+          serviceId,
+          serviceTitle,
+          packageName: packageName || null,
+          notes: notes || null,
+          commercials: {
+            basePrice,
+            travelFee,
+            totalAmount,
+            depositRequired: depositAmount,
+            depositPaid: 0,
+          },
+          payment: {
+            upiId: settings.upiId,
+            payeeName: settings.payeeName,
+            status: "DEPOSIT_PENDING",
+          },
+          expiresAt: expiresAtIso,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+
+        tx.create(db.collection("notifications").doc(), {
+          title: `New booking request: ${fullName}`,
+          body: `${newId} · ${serviceTitle} on ${date} (${city}). Deposit ₹${depositAmount.toLocaleString("en-IN")} pending.`,
+          category: "BOOKING",
+          bookingId: newId,
+          isUnread: true,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+
+        return newId;
       });
+    } catch (txErr: any) {
+      if (txErr instanceof HttpError) throw txErr;
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("[create-session] Firestore transaction failed in dev, falling back to dev store:", txErr?.message || txErr);
+        bookingId = generateBookingId();
+      } else {
+        throw txErr;
+      }
+    }
 
-      tx.create(db.doc(`bookings/${newId}`), {
-        bookingId: newId,
+    if (process.env.NODE_ENV !== "production") {
+      const devBooking: SanitizedBooking = {
+        bookingId,
         status: "DEPOSIT_PENDING",
-        customerDetails: { fullName, phone, email },
-        event: { type: serviceTitle, date, readyByTime: readyTime, venue, city, guestCount },
-        serviceId,
         serviceTitle,
         packageName: packageName || null,
-        notes: notes || null,
+        customerName: fullName.split(" ")[0],
+        event: {
+          date,
+          readyByTime: readyTime,
+          venue,
+          city,
+          guestCount,
+        },
         commercials: {
           basePrice,
           travelFee,
@@ -214,26 +301,16 @@ export async function POST(req: Request) {
           depositPaid: 0,
         },
         payment: {
+          status: "PENDING",
+          utrLast4: null,
+          rejectionReason: null,
           upiId: settings.upiId,
           payeeName: settings.payeeName,
-          status: "DEPOSIT_PENDING",
         },
         expiresAt: expiresAtIso,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-
-      tx.create(db.collection("notifications").doc(), {
-        title: `New booking request: ${fullName}`,
-        body: `${newId} · ${serviceTitle} on ${date} (${city}). Deposit ₹${depositAmount.toLocaleString("en-IN")} pending.`,
-        category: "BOOKING",
-        bookingId: newId,
-        isUnread: true,
-        createdAt: FieldValue.serverTimestamp(),
-      });
-
-      return newId;
-    });
+      };
+      devBookings.set(bookingId, devBooking);
+    }
 
     // Optional operational mirror; no-op unless GOOGLE_SHEETS_SCRIPT_URL is set; never blocks or fails the booking.
     void mirrorPaymentSessionStarted({

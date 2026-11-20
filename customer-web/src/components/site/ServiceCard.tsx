@@ -2,7 +2,7 @@ import Link from "next/link";
 import React from "react";
 import { ArrowUpRight, Clock } from "lucide-react";
 import { formatINR, type PublicService } from "../../lib/booking/types";
-import { serviceImage } from "../../lib/site-images";
+import { DEFAULT_SITE_IMAGES, serviceImage } from "../../lib/site-images";
 import FadeImg from "./FadeImg";
 
 export function durationLabel(mins: number | null): string | null {
@@ -25,6 +25,7 @@ export default function ServiceCard({ service, delay = 0 }: { service: PublicSer
       <div className="relative aspect-[4/3] overflow-hidden bg-blush">
         <FadeImg
           src={serviceImage(service)}
+          fallbackSrc={DEFAULT_SITE_IMAGES.services.default}
           alt=""
           sizes="(min-width: 1024px) 360px, (min-width: 768px) 50vw, 100vw"
           className="h-full w-full object-cover transition-transform duration-700 ease-out-expo group-hover:scale-[1.04]"
