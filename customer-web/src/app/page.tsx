@@ -6,7 +6,6 @@ import ParallaxApproach from "../components/site/ParallaxApproach";
 import ParallaxCities from "../components/site/ParallaxCities";
 import ParallaxHero from "../components/site/ParallaxHero";
 import ParallaxMetrics from "../components/site/ParallaxMetrics";
-import ParallaxTransformation from "../components/site/ParallaxTransformation";
 import ServiceCard from "../components/site/ServiceCard";
 import { getPublicConfig } from "../lib/booking/server";
 import { whatsappLink } from "../lib/booking/types";
@@ -31,10 +30,7 @@ export default async function HomePage() {
       {/* ---------------- 2. Parallax Trust & Metrics Strip (Like Eleveight) ---------------- */}
       <ParallaxMetrics />
 
-      {/* ---------------- 3. Interactive Before & After Transformation Slider (Option 2) ---------------- */}
-      <ParallaxTransformation />
-
-      {/* ---------------- 4. Featured Services ---------------- */}
+      {/* ---------------- 3. Featured Services ---------------- */}
       <section className="section">
         <div className="container-page">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal>

@@ -1,78 +1,121 @@
 "use client";
 
 import Link from "next/link";
-import React, { useRef } from "react";
-import { ArrowRight, Sparkles, Star } from "lucide-react";
+import React, { useRef, useState, useEffect, useCallback } from "react";
+import { ArrowLeftRight, ArrowRight, Sparkles, Star, Wand2 } from "lucide-react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import AvailabilityChecker from "./AvailabilityChecker";
 import FadeImg from "./FadeImg";
 import { SITE_IMAGES } from "../../lib/site-images";
 
-export default function ParallaxHero() {
+interface ParallaxHeroProps {
+  beforeImage?: string;
+  afterImage?: string;
+}
+
+export default function ParallaxHero({
+  beforeImage = SITE_IMAGES.transformation.before,
+  afterImage = SITE_IMAGES.transformation.after,
+}: ParallaxHeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const sliderFrameRef = useRef<HTMLDivElement>(null);
   const prefersReduced = useReducedMotion();
 
+  // Slider position (0 = 100% Before, 50 = Split, 100 = 100% After)
+  const [sliderPosition, setSliderPosition] = useState(50);
+  const [isDragging, setIsDragging] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
+
+  // Parallax Scroll Tracking
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end start"],
   });
 
-  // Layer 1: Background ambient drift & dim
-  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "25%"]);
+  // Background subtle drift
+  const bgY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "22%"]);
   const bgOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0.35]);
 
-  // Layer 2: Main typography and CTAs (gently lifts and fades out)
-  const textY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "-18%"]);
-  const textOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  // Main Left Column Typography (smooth upward drift & fade on scroll)
+  const textY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "-15%"]);
+  const textOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0.1]);
 
-  // Layer 3: Arched bridal portrait (drifts downwards at different pace and scales subtly)
-  const portraitY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "12%"]);
-  const portraitScale = useTransform(scrollYProgress, [0, 1], [1, prefersReduced ? 1 : 1.06]);
+  // Arched Portrait Parallax Drift & Scale
+  const portraitY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "10%"]);
+  const portraitScale = useTransform(scrollYProgress, [0, 1], [1, prefersReduced ? 1 : 1.04]);
 
-  // Layer 4: Floating Availability Checker (counter-drift upwards to create deep 3D separation)
-  const checkerY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "-24%"]);
+  // Floating Gold Aura Ring
+  const badgeY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "-30%"]);
 
-  // Layer 5: Floating gold badge (moves faster upwards)
-  const badgeY = useTransform(scrollYProgress, [0, 1], ["0%", prefersReduced ? "0%" : "-40%"]);
+  // Scroll-linked auto reveal: if user hasn't dragged, scrolling smoothly scrubs the transformation
+  useEffect(() => {
+    if (hasInteracted || prefersReduced) return;
+
+    const unsubscribe = scrollYProgress.on("change", (latest) => {
+      if (latest >= 0.05 && latest <= 0.7) {
+        const normalized = (latest - 0.05) / 0.65; // 0.0 to 1.0
+        const targetPercent = 30 + normalized * 50; // glide from 30% to 80%
+        setSliderPosition(Math.round(targetPercent));
+      }
+    });
+
+    return () => unsubscribe();
+  }, [hasInteracted, prefersReduced, scrollYProgress]);
+
+  // Drag / Touch / Mouse handlers
+  const updatePosition = useCallback((clientX: number) => {
+    if (!sliderFrameRef.current) return;
+    const rect = sliderFrameRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    setSliderPosition(Math.round(percentage));
+  }, []);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setHasInteracted(true);
+    setIsDragging(true);
+    updatePosition(e.clientX);
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return;
+    updatePosition(e.clientX);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false);
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+  };
+
+  const setView = (percent: number) => {
+    setHasInteracted(true);
+    setSliderPosition(percent);
+  };
 
   return (
     <section
       ref={containerRef}
       className="relative isolate overflow-hidden bg-plum-dark text-white min-h-[92vh] flex items-center"
     >
-      {/* Background Parallax Layer */}
+      {/* Background Ambient Glow & Particles */}
       <motion.div
         style={{ y: bgY, opacity: bgOpacity }}
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(75%_65%_at_15%_20%,rgba(212,175,55,0.18),transparent_60%),radial-gradient(65%_65%_at_90%_85%,rgba(91,51,71,0.65),transparent_70%)]"
       />
 
-      {/* Decorative floating gold ambient particles */}
       <motion.div
         style={{ y: badgeY }}
         aria-hidden="true"
         className="pointer-events-none absolute -top-10 right-[15%] h-56 w-56 rounded-full bg-gold/10 blur-3xl -z-10"
       />
 
-      {/* Mobile hero image banner */}
-      <div className="relative h-[58vh] max-h-[520px] min-h-[400px] w-full lg:hidden">
-        <FadeImg
-          src={SITE_IMAGES.hero}
-          alt="A bride in traditional jewellery with soft smoky eye makeup"
-          loading="eager"
-          sizes="100vw"
-          className="absolute inset-0 h-full w-full object-cover object-[50%_25%]"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-b from-plum-dark/60 via-transparent to-plum-dark"
-        />
-      </div>
-
-      <div className="container-page relative z-10 w-full py-16 lg:py-24">
-        <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-16">
-          {/* Left Column: Heading, Subtitle & Primary CTAs */}
-          <motion.div style={{ y: textY, opacity: textOpacity }} className="-mt-20 relative lg:mt-0">
+      <div className="container-page relative z-10 w-full py-12 lg:py-20">
+        <div className="grid gap-12 lg:grid-cols-[1.1fr_1fr] lg:items-center lg:gap-14">
+          
+          {/* ================= LEFT COLUMN ================= */}
+          <motion.div style={{ y: textY, opacity: textOpacity }} className="relative">
             <div className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-white/5 px-3.5 py-1 text-xs text-gold-light backdrop-blur-md">
               <Sparkles className="h-3.5 w-3.5 text-gold" aria-hidden="true" />
               <span>Bridal makeup · Jodhpur &amp; Rajasthan Destination</span>
@@ -103,56 +146,149 @@ export default function ParallaxHero() {
               </Link>
             </div>
 
-            {/* Mobile Availability Checker */}
-            <div className="mt-10 lg:hidden">
-              <AvailabilityChecker />
+            {/* Availability Checker placed cleanly on the Left column so the Portrait is 100% UNOBSTRUCTED */}
+            <div className="mt-10 max-w-lg">
+              <AvailabilityChecker className="border-gold/30 bg-white/95 text-plum shadow-2xl backdrop-blur-xl" />
             </div>
           </motion.div>
 
-          {/* Right Column: Desktop Arched Portrait + 3D Counter-Drifting Card */}
-          <div className="relative hidden lg:block">
-            {/* Arched Portrait Frame */}
+          {/* ================= RIGHT COLUMN (FULL BEFORE & AFTER PORTRAIT) ================= */}
+          <div className="relative">
+            {/* Quick Toggle Controls (Bare / Split / Royal Bride) */}
+            <div className="mb-4 flex items-center justify-between gap-2 px-1">
+              <span className="text-xs font-medium uppercase tracking-wider text-gold-light flex items-center gap-1.5">
+                <Wand2 className="h-3.5 w-3.5 text-gold" aria-hidden="true" />
+                <span>Transformation View:</span>
+              </span>
+              <div className="inline-flex rounded-full border border-gold/30 bg-plum/60 p-1 backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={() => setView(0)}
+                  className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                    sliderPosition === 0 ? "bg-white/20 text-white font-semibold" : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  Before
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView(50)}
+                  className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                    sliderPosition > 10 && sliderPosition < 90
+                      ? "bg-gold text-plum-dark font-semibold shadow-xs"
+                      : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  Split 50/50
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView(100)}
+                  className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                    sliderPosition === 100 ? "bg-gold text-plum-dark font-semibold shadow-xs" : "text-white/70 hover:text-white"
+                  }`}
+                >
+                  After
+                </button>
+              </div>
+            </div>
+
+            {/* Arched Full-View Before & After Portrait Frame */}
             <motion.div
               style={{ y: portraitY, scale: portraitScale }}
-              className="relative ml-auto aspect-[4/5] w-full max-w-[480px] overflow-hidden rounded-t-[999px] rounded-b-[2.5rem] ring-1 ring-gold/40 shadow-2xl"
+              className="relative mx-auto w-full max-w-[490px] select-none"
             >
-              <FadeImg
-                src={SITE_IMAGES.hero}
-                alt="A bride in traditional jewellery with soft smoky eye makeup"
-                loading="eager"
-                sizes="480px"
-                className="h-full w-full object-cover object-[50%_30%]"
-              />
               <div
+                ref={sliderFrameRef}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                className="group relative aspect-[4/5] w-full cursor-ew-resize overflow-hidden rounded-t-[999px] rounded-b-[2.5rem] bg-plum-dark ring-1 ring-gold/40 shadow-2xl touch-none"
+              >
+                {/* 1. "BEFORE" Base Layer (Visible on the right of the divider) */}
+                <div className="absolute inset-0 h-full w-full">
+                  <FadeImg
+                    src={beforeImage}
+                    alt="Bride before makeup - clean skin and natural prep"
+                    sizes="(min-width: 1024px) 500px, 90vw"
+                    className="h-full w-full object-cover object-[50%_25%]"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-gradient-to-t from-plum-dark/60 via-transparent to-transparent pointer-events-none"
+                  />
+                </div>
+
+                {/* 2. "AFTER" Clipped Layer (Visible on the left of the divider) */}
+                <div
+                  style={{
+                    clipPath: `polygon(0 0, ${sliderPosition}% 0, ${sliderPosition}% 100%, 0 100%)`,
+                  }}
+                  className="absolute inset-0 h-full w-full pointer-events-none"
+                >
+                  <FadeImg
+                    src={afterImage}
+                    alt="Bride after makeup - royal Rajasthani bridal look"
+                    sizes="(min-width: 1024px) 500px, 90vw"
+                    className="h-full w-full object-cover object-[50%_25%]"
+                  />
+                  <div
+                    aria-hidden="true"
+                    className="absolute inset-0 bg-gradient-to-t from-plum-dark/60 via-transparent to-transparent pointer-events-none"
+                  />
+                </div>
+
+                {/* Floating Status Badges */}
+                <div className="pointer-events-none absolute top-8 left-6 z-20">
+                  <span className="rounded-full border border-gold/40 bg-gold/90 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase text-plum-dark backdrop-blur-md shadow-xs">
+                    AFTER · Royal Bride
+                  </span>
+                </div>
+                <div className="pointer-events-none absolute top-8 right-6 z-20">
+                  <span className="rounded-full border border-white/20 bg-plum-dark/80 px-3 py-1 text-[11px] font-medium tracking-wider uppercase text-white/90 backdrop-blur-md shadow-xs">
+                    BEFORE · Bare Skin
+                  </span>
+                </div>
+
+                {/* Liquid Gold Divider Line */}
+                <div
+                  style={{ left: `${sliderPosition}%` }}
+                  className="pointer-events-none absolute inset-y-0 -ml-[1px] w-[2px] bg-gradient-to-b from-gold-light via-gold to-gold-dark z-20 shadow-[0_0_12px_rgba(212,175,55,0.8)]"
+                >
+                  {/* Golden Medallion Drag Handle */}
+                  <div className="absolute top-1/2 -left-5 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-gold bg-plum-dark text-gold-light shadow-luxury transition-transform duration-200 group-hover:scale-110 active:scale-95">
+                    <ArrowLeftRight className="h-4 w-4" aria-hidden="true" />
+                  </div>
+                </div>
+
+                {/* Instruction Banner at the bottom */}
+                <div className="pointer-events-none absolute bottom-4 inset-x-0 text-center z-20">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-plum-dark/85 px-3 py-1 text-[11px] text-white/80 backdrop-blur-md border border-white/10">
+                    <Wand2 className="h-3 w-3 text-gold" aria-hidden="true" />
+                    Drag handle or scroll to reveal
+                  </span>
+                </div>
+              </div>
+
+              {/* Decorative Aura Ring */}
+              <motion.div
+                style={{ y: badgeY }}
                 aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-t from-plum-dark/50 via-transparent to-transparent"
+                className="pointer-events-none absolute -right-6 -top-6 h-36 w-36 rounded-full border border-gold/40 opacity-70"
               />
-            </motion.div>
 
-            {/* Floating Gold Aura Ring */}
-            <motion.div
-              style={{ y: badgeY }}
-              aria-hidden="true"
-              className="absolute -right-6 -top-6 h-36 w-36 rounded-full border border-gold/40 opacity-70"
-            />
-
-            {/* Floating Luxury Tag */}
-            <motion.div
-              style={{ y: badgeY }}
-              className="absolute -top-4 left-4 z-20 flex items-center gap-2 rounded-2xl border border-gold/30 bg-plum-dark/85 px-4 py-2.5 text-xs text-gold-light shadow-luxury backdrop-blur-md"
-            >
-              <Star className="h-4 w-4 fill-gold text-gold" aria-hidden="true" />
-              <span>One bride per day · Exclusive focus</span>
-            </motion.div>
-
-            {/* Floating Availability Checker with 3D counter-drift */}
-            <motion.div
-              style={{ y: checkerY }}
-              className="absolute -bottom-10 -left-12 z-20 w-[390px] shadow-2xl"
-            >
-              <AvailabilityChecker className="border-gold/30 bg-white/95 backdrop-blur-xl" />
+              {/* Floating Luxury Tag */}
+              <motion.div
+                style={{ y: badgeY }}
+                className="absolute -top-4 -left-4 z-20 flex items-center gap-2 rounded-2xl border border-gold/30 bg-plum-dark/90 px-4 py-2 text-xs text-gold-light shadow-luxury backdrop-blur-md"
+              >
+                <Star className="h-4 w-4 fill-gold text-gold" aria-hidden="true" />
+                <span>One bride per day · Exclusive focus</span>
+              </motion.div>
             </motion.div>
           </div>
+
         </div>
       </div>
     </section>
