@@ -58,6 +58,7 @@ export interface StoredSession {
   form: BookingForm;
   serviceTitle: string;
   submitted: boolean;
+  rejectionReason?: string | null;
 }
 
 const STORAGE_KEY = "mbp_booking_v1";
@@ -220,10 +221,18 @@ export default function BookingWizard() {
           return;
         }
         const expiresAt = b.expiresAt ? Date.parse(b.expiresAt) : 0;
-        if (b.status !== "DEPOSIT_PENDING" || !b.payment.upiId || expiresAt <= Date.now()) {
+        const isEligible = b.status === "DEPOSIT_PENDING" || b.status === "PAYMENT_REJECTED";
+        if (!isEligible || !b.payment.upiId) {
           setError("This booking is no longer waiting for payment. Check its status on the Track booking page.");
           return;
         }
+        if (b.status === "DEPOSIT_PENDING" && expiresAt <= Date.now()) {
+          setError("Your hold period for this date has expired. Please select your date again.");
+          return;
+        }
+        // If retrying a rejected payment, give a fresh 15-minute hold window for payment upload
+        const effectiveExpiresAt = b.status === "PAYMENT_REJECTED" ? Date.now() + 15 * 60 * 1000 : expiresAt;
+
         const resumedForm: BookingForm = {
           serviceId: "",
           date: b.event.date,
@@ -241,13 +250,14 @@ export default function BookingWizard() {
             bookingId: b.bookingId,
             totalAmount: b.commercials.totalAmount,
             depositAmount: b.commercials.depositRequired,
-            expiresAt,
+            expiresAt: effectiveExpiresAt,
             upiId: b.payment.upiId,
             payeeName: b.payment.payeeName || "",
           },
           form: resumedForm,
           serviceTitle: b.serviceTitle,
           submitted: false,
+          rejectionReason: b.status === "PAYMENT_REJECTED" ? b.payment.rejectionReason : null,
         };
         writeStored(next);
         setStored(next);

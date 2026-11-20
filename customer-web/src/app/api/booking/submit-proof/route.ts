@@ -4,6 +4,7 @@ import { adminBucket, adminDb } from "../../../../lib/firebase-admin";
 import { clientIp, expireBooking, isHoldActive, jsonError, rateLimit, REVIEW_HOLD_EXTENSION_MS } from "../../../../lib/booking/server";
 import { BOOKING_ID_PATTERN, normalizeBookingId, normalizePhone } from "../../../../lib/booking/types";
 import { mirrorPaymentProofSubmitted } from "../../../../lib/financial/sheets-payment-mirror-engine";
+import { recordDevProofSubmission } from "../../../../lib/booking/dev-store";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
         console.warn("[submit-proof] Database offline in dev, accepting proof for preview:", err);
+        recordDevProofSubmission(bookingId, utrRaw);
         return NextResponse.json({
           ok: true,
           bookingId,
@@ -85,12 +87,12 @@ export async function POST(req: Request) {
     if (booking.status === "PAYMENT_PROOF_SUBMITTED") {
       return jsonError("We've already received your payment proof. We'll confirm your booking after verification.", 409);
     }
-    if (booking.status !== "DEPOSIT_PENDING") {
+    if (booking.status !== "DEPOSIT_PENDING" && booking.status !== "PAYMENT_REJECTED") {
       if (booking.status === "EXPIRED") return jsonError("This booking hold has expired. Please start a new booking.", 410);
       return jsonError("This booking is no longer waiting for a payment.", 409);
     }
     const expiresMs = Date.parse(booking.expiresAt || "");
-    if (!Number.isFinite(expiresMs) || expiresMs <= nowMs) {
+    if (booking.status === "DEPOSIT_PENDING" && (!Number.isFinite(expiresMs) || expiresMs <= nowMs)) {
       await expireBooking(bookingId).catch((e) => console.warn("[submit-proof] lazy expiry failed:", e));
       return jsonError(
         "Sorry, the time to pay for this booking ran out and the date was released. Please start a new booking.",
@@ -115,10 +117,10 @@ export async function POST(req: Request) {
       await db.runTransaction(async (tx) => {
         const [bSnap, utrSnap, calSnap] = await Promise.all([tx.get(bookingRef), tx.get(utrRef), tx.get(calRef)]);
         const b = bSnap.data();
-        if (!b || b.status !== "DEPOSIT_PENDING") {
+        if (!b || (b.status !== "DEPOSIT_PENDING" && b.status !== "PAYMENT_REJECTED")) {
           throw new HttpError(409, "This booking is no longer waiting for a payment.");
         }
-        if (Date.parse(b.expiresAt || "") <= Date.now()) {
+        if (b.status === "DEPOSIT_PENDING" && Date.parse(b.expiresAt || "") <= Date.now()) {
           throw new HttpError(410, "Sorry, the time to pay for this booking ran out. Please start a new booking.");
         }
         if (utrSnap.exists && utrSnap.data()?.bookingId !== bookingId) {
@@ -137,6 +139,8 @@ export async function POST(req: Request) {
           "payment.utrNumber": utrRaw,
           "payment.proofPath": proofPath,
           "payment.submittedAt": FieldValue.serverTimestamp(),
+          "payment.rejectionReason": FieldValue.delete(),
+          expiresAt: new Date(nowMs + REVIEW_HOLD_EXTENSION_MS).toISOString(),
           updatedAt: FieldValue.serverTimestamp(),
         });
 

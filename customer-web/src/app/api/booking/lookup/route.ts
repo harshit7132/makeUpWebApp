@@ -7,6 +7,7 @@ import {
   normalizePhone,
   type SanitizedBooking,
 } from "../../../../lib/booking/types";
+import { getDevBooking } from "../../../../lib/booking/dev-store";
 
 export const dynamic = "force-dynamic";
 
@@ -36,35 +37,7 @@ export async function POST(req: Request) {
     } catch (err) {
       if (process.env.NODE_ENV !== "production") {
         console.warn("[lookup] Firestore offline in dev, returning preview booking for:", bookingId);
-        const booking: SanitizedBooking = {
-          bookingId,
-          status: "DEPOSIT_PENDING",
-          serviceTitle: "Signature Bridal Makeup",
-          packageName: null,
-          customerName: "Harshit",
-          event: {
-            date: "2026-11-22",
-            readyByTime: "06:30",
-            venue: "Hotel",
-            city: "Jodhpur",
-            guestCount: 5,
-          },
-          commercials: {
-            basePrice: 25000,
-            travelFee: 0,
-            totalAmount: 25000,
-            depositRequired: 7500,
-            depositPaid: 0,
-          },
-          payment: {
-            status: "PENDING",
-            utrLast4: null,
-            rejectionReason: null,
-            upiId: "prachi@okicici",
-            payeeName: "Makeovers by Prachi",
-          },
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        };
+        const booking = getDevBooking(bookingId, phone);
         return NextResponse.json({ booking });
       }
       throw err;

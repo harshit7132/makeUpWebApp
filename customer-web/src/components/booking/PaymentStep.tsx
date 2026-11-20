@@ -288,6 +288,19 @@ export default function PaymentStep({ stored, whatsappNumber, holdMinutes = 15, 
 
   return (
     <section className="space-y-5" aria-labelledby="step4">
+      {stored.rejectionReason && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-900" role="alert">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-red-800">Previous submission was rejected</p>
+              <p className="mt-0.5 text-sm font-medium text-red-950">{stored.rejectionReason}</p>
+              <p className="mt-1 text-xs text-red-700">Please verify your payment details, enter the correct 12-digit UPI reference (UTR), and upload an updated screenshot below.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Amount + countdown */}
       <div className="relative overflow-hidden rounded-3xl bg-plum-dark p-6 text-white shadow-lift sm:p-8">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(70%_90%_at_100%_0%,rgba(212,175,55,0.22),transparent_60%)]" />

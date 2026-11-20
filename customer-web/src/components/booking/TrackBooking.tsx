@@ -9,11 +9,13 @@ import {
   BadgeCheck,
   CalendarCheck,
   CalendarDays,
+  CheckCircle2,
   Clock,
   Hash,
   IndianRupee,
   Loader2,
   MapPin,
+  RotateCcw,
   Search,
   Sparkles,
   Upload,
@@ -27,12 +29,12 @@ type Tone = "info" | "success" | "warn" | "error";
 const COPY: Record<string, { title: string; text: string; tone: Tone }> = {
   DEPOSIT_PENDING: {
     title: "Waiting for your deposit",
-    text: "Your date is on hold. Complete the UPI deposit and upload the screenshot to secure it.",
+    text: "Your date is on hold. Complete the UPI deposit and upload the screenshot to lock your reservation.",
     tone: "warn",
   },
   PAYMENT_PROOF_SUBMITTED: {
-    title: "Payment received, being verified",
-    text: "Thank you! We're checking your payment. Your date stays held while we verify it, and we'll confirm shortly.",
+    title: "Payment under review",
+    text: "Thank you! We've received your payment screenshot. Makeovers by Prachi is verifying it and will confirm your booking shortly.",
     tone: "info",
   },
   CONFIRMED: {
@@ -46,8 +48,8 @@ const COPY: Record<string, { title: string; text: string; tone: Tone }> = {
     tone: "success",
   },
   PAYMENT_REJECTED: {
-    title: "We couldn't verify your payment",
-    text: "The date has been released. Please contact us on WhatsApp and we'll help you sort it out.",
+    title: "Payment verification failed",
+    text: "We couldn't verify your payment screenshot. Please review the reason below and retry your payment or upload a new screenshot.",
     tone: "error",
   },
   EXPIRED: {
@@ -74,32 +76,197 @@ interface Stage {
   key: string;
   title: string;
   text: string;
+  badge?: string;
   icon: React.ComponentType<{ className?: string }>;
   state: StageState;
 }
 
-function buildStages(status: string): Stage[] {
-  const order = ["DEPOSIT_PENDING", "PAYMENT_PROOF_SUBMITTED", "CONFIRMED", "COMPLETED"];
-  const idx = order.indexOf(status);
-  const base: Omit<Stage, "state">[] = [
-    { key: "req", title: "Date requested", text: "Your date was held for you.", icon: CalendarCheck },
-    { key: "paid", title: "Deposit & proof sent", text: "UPI payment and screenshot uploaded.", icon: Upload },
-    { key: "conf", title: "Booking confirmed", text: "Payment verified by the studio.", icon: BadgeCheck },
-    { key: "day", title: "Your big day", text: "Getting you ready, beautifully.", icon: Sparkles },
-  ];
-  if (idx >= 0) {
-    // DEPOSIT_PENDING: 1 done, 2 in progress · PROOF_SUBMITTED: 2 done, 3 in progress · CONFIRMED: 3 done · COMPLETED: all done
-    const doneCount = status === "COMPLETED" ? base.length : idx + 1;
-    const current = status === "CONFIRMED" || status === "COMPLETED" ? -1 : doneCount;
-    return base.map((s, i) => ({ ...s, state: i < doneCount ? "done" : i === current ? "current" : "todo" }));
+function buildStages(status: string, rejectionReason?: string | null): Stage[] {
+  if (status === "PAYMENT_REJECTED") {
+    return [
+      {
+        key: "req",
+        title: "Date requested",
+        text: "Your date was held for you.",
+        icon: CalendarCheck,
+        state: "done",
+      },
+      {
+        key: "paid",
+        title: "Payment verification",
+        text: rejectionReason ? `Rejected: ${rejectionReason}` : "Payment verification was rejected by the studio.",
+        badge: "Rejected",
+        icon: XCircle,
+        state: "failed",
+      },
+      {
+        key: "conf",
+        title: "Booking confirmed",
+        text: "Awaiting valid payment verification.",
+        icon: BadgeCheck,
+        state: "todo",
+      },
+      {
+        key: "day",
+        title: "Your big day",
+        text: "Getting you ready, beautifully.",
+        icon: Sparkles,
+        state: "todo",
+      },
+    ];
   }
-  // Ended early: show where it stopped.
-  const failedAt = status === "PAYMENT_REJECTED" ? 2 : 1;
-  const failTitle = status === "PAYMENT_REJECTED" ? "Payment not verified" : status === "EXPIRED" ? "Hold expired" : "Booking cancelled";
-  return base.slice(0, failedAt + 1).map((s, i) => {
-    if (i < failedAt) return { ...s, state: "done" as const };
-    return { ...s, title: failTitle, text: "The date has been released.", icon: XCircle, state: "failed" as const };
-  });
+
+  if (status === "EXPIRED" || status === "CANCELLED") {
+    return [
+      {
+        key: "req",
+        title: "Date requested",
+        text: "Your date was held for you.",
+        icon: CalendarCheck,
+        state: "done",
+      },
+      {
+        key: "fail",
+        title: status === "EXPIRED" ? "Hold expired" : "Booking cancelled",
+        text: status === "EXPIRED" ? "Deposit wasn't completed in time; date was released." : "This booking request was cancelled.",
+        icon: XCircle,
+        state: "failed",
+      },
+    ];
+  }
+
+  if (status === "DEPOSIT_PENDING") {
+    return [
+      {
+        key: "req",
+        title: "Date requested",
+        text: "Your date was held for you.",
+        icon: CalendarCheck,
+        state: "done",
+      },
+      {
+        key: "paid",
+        title: "Deposit payment",
+        text: "Transfer the UPI deposit & upload your screenshot to secure your date.",
+        badge: "Action required",
+        icon: Upload,
+        state: "current",
+      },
+      {
+        key: "conf",
+        title: "Booking confirmed",
+        text: "Payment verified by the studio.",
+        icon: BadgeCheck,
+        state: "todo",
+      },
+      {
+        key: "day",
+        title: "Your big day",
+        text: "Getting you ready, beautifully.",
+        icon: Sparkles,
+        state: "todo",
+      },
+    ];
+  }
+
+  if (status === "PAYMENT_PROOF_SUBMITTED") {
+    return [
+      {
+        key: "req",
+        title: "Date requested",
+        text: "Your date was held for you.",
+        icon: CalendarCheck,
+        state: "done",
+      },
+      {
+        key: "paid",
+        title: "Deposit & proof sent",
+        text: "UPI payment made and screenshot uploaded.",
+        icon: Upload,
+        state: "done",
+      },
+      {
+        key: "conf",
+        title: "Studio verification",
+        text: "Our studio is verifying your transaction. You'll receive confirmation shortly.",
+        badge: "Under review",
+        icon: BadgeCheck,
+        state: "current",
+      },
+      {
+        key: "day",
+        title: "Your big day",
+        text: "Getting you ready, beautifully.",
+        icon: Sparkles,
+        state: "todo",
+      },
+    ];
+  }
+
+  if (status === "CONFIRMED") {
+    return [
+      {
+        key: "req",
+        title: "Date requested",
+        text: "Your date was held for you.",
+        icon: CalendarCheck,
+        state: "done",
+      },
+      {
+        key: "paid",
+        title: "Deposit & proof sent",
+        text: "UPI payment made and screenshot uploaded.",
+        icon: Upload,
+        state: "done",
+      },
+      {
+        key: "conf",
+        title: "Booking confirmed",
+        text: "Payment verified and your date is securely reserved.",
+        icon: BadgeCheck,
+        state: "done",
+      },
+      {
+        key: "day",
+        title: "Your big day",
+        text: "Getting you ready, beautifully.",
+        icon: Sparkles,
+        state: "todo",
+      },
+    ];
+  }
+
+  // COMPLETED
+  return [
+    {
+      key: "req",
+      title: "Date requested",
+      text: "Your date was held for you.",
+      icon: CalendarCheck,
+      state: "done",
+    },
+    {
+      key: "paid",
+      title: "Deposit & proof sent",
+      text: "UPI payment made and screenshot uploaded.",
+      icon: Upload,
+      state: "done",
+    },
+    {
+      key: "conf",
+      title: "Booking confirmed",
+      text: "Payment verified and your date is securely reserved.",
+      icon: BadgeCheck,
+      state: "done",
+    },
+    {
+      key: "day",
+      title: "Your big day",
+      text: "Event completed beautifully.",
+      icon: Sparkles,
+      state: "done",
+    },
+  ];
 }
 
 export default function TrackBooking({ whatsappNumber }: { whatsappNumber: string }) {
@@ -238,7 +405,7 @@ export default function TrackBooking({ whatsappNumber }: { whatsappNumber: strin
 
 function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: string | null; phone: string }) {
   const copy = COPY[booking.status] || { title: booking.status, text: "", tone: "info" as const };
-  const stages = buildStages(booking.status);
+  const stages = buildStages(booking.status, booking.payment?.rejectionReason);
   const holdActive = booking.status === "DEPOSIT_PENDING" && booking.expiresAt && Date.parse(booking.expiresAt) > Date.now();
 
   return (
@@ -257,10 +424,21 @@ function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: 
           </span>
         </div>
         <p className="relative mt-4 max-w-xl text-sm leading-relaxed text-white/75">{copy.text}</p>
-        {booking.status === "PAYMENT_REJECTED" && booking.payment.rejectionReason && (
-          <p className="relative mt-2 text-sm text-white/90">
-            <strong>Reason:</strong> {booking.payment.rejectionReason}
-          </p>
+        {booking.status === "PAYMENT_REJECTED" && (
+          <div className="relative mt-4 rounded-2xl border border-red-500/30 bg-red-950/40 p-4 text-sm text-red-200">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+              <div className="space-y-1">
+                <p className="font-semibold text-red-100">Payment verification was rejected</p>
+                {booking.payment.rejectionReason && (
+                  <p className="text-red-200/90">
+                    <strong className="text-white">Reason from studio:</strong> {booking.payment.rejectionReason}
+                  </p>
+                )}
+                <p className="text-xs text-red-300/80">Please click &ldquo;Retry payment&rdquo; below to submit a valid UPI reference number and screenshot.</p>
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
@@ -297,7 +475,11 @@ function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: 
                 <div className="pt-1.5">
                   <p className={`text-sm font-semibold ${s.state === "todo" ? "text-muted" : s.state === "failed" ? "text-red-800" : "text-plum"}`}>
                     {s.title}
-                    {s.state === "current" && <span className="ml-2 text-xs font-medium text-gold-dark">In progress</span>}
+                    {s.badge && (
+                      <span className={`ml-2 text-xs font-medium ${s.state === "failed" ? "text-red-700" : "text-gold-dark"}`}>
+                        {s.badge}
+                      </span>
+                    )}
                   </p>
                   <p className="mt-0.5 text-xs text-muted">{s.text}</p>
                 </div>
@@ -331,17 +513,40 @@ function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: 
 
       {/* Next action */}
       <div className="border-t border-sand/70 bg-champagne/60 p-6 sm:px-8">
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        {booking.status === "PAYMENT_PROOF_SUBMITTED" && (
+          <div className="mb-4 flex items-center gap-3 rounded-2xl border border-gold/40 bg-gold/10 p-4 text-plum">
+            <Clock className="h-5 w-5 shrink-0 text-gold-dark animate-pulse" />
+            <div>
+              <p className="font-semibold text-plum">Payment verification in progress</p>
+              <p className="text-xs text-muted">You have already uploaded your deposit screenshot. Our studio is verifying it and will confirm your booking shortly — no further action is needed from you right now.</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
           {holdActive && (
             <Link
               href={`/book?resume=${encodeURIComponent(booking.bookingId)}&phone=${encodeURIComponent(phone)}`}
-              className="btn-primary px-7"
+              className="btn-primary px-7 inline-flex items-center gap-2"
             >
               Complete payment <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           )}
-          {(booking.status === "EXPIRED" || booking.status === "PAYMENT_REJECTED" || booking.status === "CANCELLED") && (
-            <Link href="/book" className="btn-primary px-7">
+          {booking.status === "PAYMENT_REJECTED" && (
+            <>
+              <Link
+                href={`/book?resume=${encodeURIComponent(booking.bookingId)}&phone=${encodeURIComponent(phone)}&retry=true`}
+                className="btn-primary px-7 inline-flex items-center gap-2"
+              >
+                <RotateCcw className="h-4 w-4" aria-hidden="true" /> Retry payment
+              </Link>
+              <Link href="/book" className="btn-secondary px-6">
+                Book a different date
+              </Link>
+            </>
+          )}
+          {(booking.status === "EXPIRED" || booking.status === "CANCELLED") && (
+            <Link href="/book" className="btn-primary px-7 inline-flex items-center gap-2">
               Book again <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           )}
