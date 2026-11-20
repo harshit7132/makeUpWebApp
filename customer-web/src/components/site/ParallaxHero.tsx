@@ -58,15 +58,15 @@ export default function ParallaxHero({
       const clamped = Math.max(0, Math.min(100, rawPercent));
       applyPosition(clamped, false);
 
-      if (clamped < 15) setActiveView("before");
-      else if (clamped > 85) setActiveView("after");
+      if (clamped < 20) setActiveView("before");
+      else if (clamped > 80) setActiveView("after");
       else setActiveView("split");
     },
     [applyPosition]
   );
 
   const onPointerDown = (e: React.PointerEvent) => {
-    // CRITICAL: e.preventDefault() prevents browser native image drag and text selection ghosts
+    // Prevent browser native image drag and text selection
     e.preventDefault();
     isDraggingRef.current = true;
     handlePointerMove(e.clientX);
@@ -88,18 +88,6 @@ export default function ParallaxHero({
     } catch (_) {}
   };
 
-  // Optional mouse wheel / trackpad horizontal scroll support directly on the frame
-  const onWheel = (e: React.WheelEvent) => {
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-    if (Math.abs(delta) > 1) {
-      const next = Math.max(0, Math.min(100, currentPosRef.current + delta * 0.12));
-      applyPosition(next, false);
-      if (next < 15) setActiveView("before");
-      else if (next > 85) setActiveView("after");
-      else setActiveView("split");
-    }
-  };
-
   // Button clicks animate smoothly to preset positions
   const setPresetView = (view: "before" | "split" | "after") => {
     setActiveView(view);
@@ -108,7 +96,7 @@ export default function ParallaxHero({
     if (view === "after") applyPosition(100, true);
   };
 
-  // Scroll sync: smoothly glides the slider as user scrolls up or down the page
+  // Scroll sync: gentle, calm subtle drift on page scroll (never fast or erratic)
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end start"],
@@ -122,20 +110,15 @@ export default function ParallaxHero({
 
     let rafId = 0;
     const unsubscribe = scrollYProgress.on("change", (latest) => {
-      // Only pause scroll-sync if user is actively holding down the mouse to drag
       if (isDraggingRef.current) return;
 
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
-        // As you scroll down from top of page (0.0) through the hero (0.5)
-        // the slider smoothly glides from 25% (mostly before) to 85% (full bridal after)
-        const progress = Math.max(0, Math.min(1, latest / 0.5));
-        const pos = 25 + progress * 60; // scrubs from 25% to 85% smoothly
+        // Calm, gentle progression from 50% to 68% across the full hero scroll
+        // Clamped so it never whips violently or snaps across the face
+        const normalized = Math.max(0, Math.min(1, latest / 0.8));
+        const pos = 50 + normalized * 18;
         applyPosition(pos, false);
-
-        if (pos < 20) setActiveView("before");
-        else if (pos > 80) setActiveView("after");
-        else setActiveView("split");
       });
     });
 
@@ -256,14 +239,13 @@ export default function ParallaxHero({
                 <span>One bride per day</span>
               </div>
 
-              {/* The Arched Before & After Frame with Touch/Drag/Wheel events */}
+              {/* The Arched Before & After Frame with Touch/Drag events */}
               <div
                 ref={sliderFrameRef}
                 onPointerDown={onPointerDown}
                 onPointerMove={onPointerMove}
                 onPointerUp={onPointerUp}
                 onPointerCancel={onPointerUp}
-                onWheel={onWheel}
                 onDragStart={(e) => e.preventDefault()}
                 onContextMenu={(e) => e.preventDefault()}
                 style={{
@@ -310,14 +292,14 @@ export default function ParallaxHero({
                   />
                 </div>
 
-                {/* Floating Status Badges */}
-                <div className="pointer-events-none absolute top-6 left-5 z-20 select-none">
-                  <span className="rounded-full border border-gold/40 bg-gold/90 px-2.5 py-0.5 text-[10px] font-semibold tracking-wider uppercase text-plum-dark backdrop-blur-md shadow-xs">
+                {/* Floating Status Badges - Placed where frame is flat and wide (NEVER CROPPED) */}
+                <div className="pointer-events-none absolute bottom-12 left-5 z-20 select-none">
+                  <span className="rounded-full border border-gold/40 bg-gold/90 px-3 py-1 text-[11px] font-semibold tracking-wider uppercase text-plum-dark backdrop-blur-md shadow-md">
                     AFTER · Royal Bride
                   </span>
                 </div>
-                <div className="pointer-events-none absolute top-6 right-5 z-20 select-none">
-                  <span className="rounded-full border border-white/20 bg-plum-dark/85 px-2.5 py-0.5 text-[10px] font-medium tracking-wider uppercase text-white/90 backdrop-blur-md shadow-xs">
+                <div className="pointer-events-none absolute bottom-12 right-5 z-20 select-none">
+                  <span className="rounded-full border border-white/30 bg-plum-dark/90 px-3 py-1 text-[11px] font-medium tracking-wider uppercase text-white backdrop-blur-md shadow-md">
                     BEFORE · Bare Skin
                   </span>
                 </div>
@@ -341,7 +323,7 @@ export default function ParallaxHero({
                 <div className="pointer-events-none absolute bottom-3.5 inset-x-0 text-center z-20 select-none">
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-plum-dark/85 px-3 py-1 text-[10px] text-white/80 backdrop-blur-md border border-white/10">
                     <Wand2 className="h-3 w-3 text-gold" aria-hidden="true" />
-                    Drag or scroll to transform
+                    Drag handle or click pills
                   </span>
                 </div>
               </div>
