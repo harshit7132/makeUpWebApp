@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { formatEventDate, formatINR, whatsappLink, type SanitizedBooking } from "../../lib/booking/types";
 import { WhatsAppIcon } from "../site/WhatsAppFab";
+import OrderReviewForm from "./OrderReviewForm";
 
 type Tone = "info" | "success" | "warn" | "error";
 
@@ -509,6 +510,13 @@ function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: 
         </div>
       </div>
 
+      {/* Review form for completed events */}
+      {booking.status === "COMPLETED" && (
+        <div className="border-t border-sand/70 bg-champagne/30 p-6 sm:p-8">
+          <OrderReviewForm booking={booking} />
+        </div>
+      )}
+
       {/* Next action */}
       <div className="border-t border-sand/70 bg-champagne/60 p-6 sm:px-8">
         {booking.status === "PAYMENT_PROOF_SUBMITTED" && (
@@ -529,6 +537,16 @@ function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: 
             >
               Complete payment <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
+          )}
+          {booking.status === "COMPLETED" && (
+            <>
+              <Link href="/reviews" className="btn-secondary px-6">
+                Read all reviews
+              </Link>
+              <Link href="/book" className="btn-primary px-7 inline-flex items-center gap-2">
+                Book another celebration <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </>
           )}
           {booking.status === "PAYMENT_REJECTED" && (
             <>

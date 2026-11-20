@@ -20,6 +20,8 @@ import {
   RotateCcw,
   Save,
   Sparkles,
+  Star,
+  Quote,
   Trash2,
   Upload,
   X,
@@ -29,7 +31,7 @@ import { normalizeImageUrl } from "../../lib/site-images";
 import FadeImg from "../../components/site/FadeImg";
 
 export default function AdminPage() {
-  const [tab, setTab] = useState<"media" | "gallery">("media");
+  const [tab, setTab] = useState<"media" | "gallery" | "reviews">("media");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -42,19 +44,25 @@ export default function AdminPage() {
   const [editingItem, setEditingItem] = useState<GalleryPhoto | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
 
+  // Customer Reviews State
+  const [reviews, setReviews] = useState<any[]>([]);
+
   // Load site media & gallery
   const loadData = async () => {
     setLoading(true);
     try {
-      const [mediaRes, galleryRes] = await Promise.all([
+      const [mediaRes, galleryRes, reviewsRes] = await Promise.all([
         fetch("/api/admin/site-media"),
         fetch("/api/admin/gallery"),
+        fetch("/api/reviews"),
       ]);
       const mediaData = await mediaRes.json();
       const galleryData = await galleryRes.json();
+      const reviewsData = await reviewsRes.json();
 
       if (mediaData.media) setMedia(mediaData.media);
       if (galleryData.items) setGallery(galleryData.items);
+      if (reviewsData.reviews) setReviews(reviewsData.reviews);
     } catch {
       setMessage({ type: "error", text: "Failed to connect to admin API." });
     } finally {
@@ -101,6 +109,19 @@ export default function AdminPage() {
       flash(`Deleted "${title}"`);
     } catch {
       flash("Failed to delete gallery item", "error");
+    }
+  };
+
+  /* ---------------- Delete Review ---------------- */
+  const deleteReview = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete the review from "${name}"?`)) return;
+    try {
+      const res = await fetch(`/api/reviews?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Delete failed");
+      setReviews((prev) => prev.filter((r) => r.id !== id));
+      flash(`Deleted review from ${name}`);
+    } catch {
+      flash("Failed to delete review", "error");
     }
   };
 
@@ -158,7 +179,16 @@ export default function AdminPage() {
                 tab === "gallery" ? "chip-active bg-plum text-gold-light" : "bg-champagne hover:bg-sand/60"
               }`}
             >
-              <Instagram className="h-4 w-4" /> Gallery &amp; Instagram Carousels ({gallery.length})
+              <Layers className="h-4 w-4" /> Gallery &amp; Carousels ({gallery.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("reviews")}
+              className={`chip py-2 px-5 text-sm font-semibold transition-all ${
+                tab === "reviews" ? "chip-active bg-plum text-gold-light" : "bg-champagne hover:bg-sand/60"
+              }`}
+            >
+              <Star className="h-4 w-4" /> Customer Reviews ({reviews.length})
             </button>
           </div>
 
@@ -214,7 +244,7 @@ export default function AdminPage() {
           </div>
         ) : tab === "media" && media ? (
           <SiteMediaManager media={media} setMedia={setMedia} onSave={saveMedia} saving={saving} />
-        ) : (
+        ) : tab === "gallery" ? (
           <GalleryManager
             gallery={gallery}
             onEdit={(item) => {
@@ -223,6 +253,8 @@ export default function AdminPage() {
             }}
             onDelete={deleteGalleryItem}
           />
+        ) : (
+          <ReviewsManager reviews={reviews} onDeleteReview={deleteReview} />
         )}
       </main>
 
@@ -1008,6 +1040,95 @@ function GalleryItemModal({
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* -------------------- Reviews Manager Component -------------------- */
+
+function ReviewsManager({
+  reviews,
+  onDeleteReview,
+}: {
+  reviews: any[];
+  onDeleteReview: (id: string, name: string) => void;
+}) {
+  return (
+    <div className="space-y-8 animate-fade-in">
+      <div className="rounded-3xl border border-sand bg-white p-6 sm:p-8 shadow-soft">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-sand pb-6">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gold/20 text-gold-dark">
+                <Star className="h-4 w-4 fill-gold text-gold" />
+              </span>
+              <h2 className="font-serif text-2xl font-bold text-plum">Customer Reviews &amp; Testimonials</h2>
+            </div>
+            <p className="mt-1 text-sm text-muted">
+              Reviews submitted by clients after order completion. Published reviews are visible on the homepage and /reviews page.
+            </p>
+          </div>
+          <Link
+            href="/reviews"
+            target="_blank"
+            className="btn-primary py-2 px-5 text-xs inline-flex items-center gap-1.5 self-start sm:self-auto"
+          >
+            <ExternalLink className="h-3.5 w-3.5" /> View live /reviews page
+          </Link>
+        </div>
+
+        {reviews.length === 0 ? (
+          <div className="text-center py-16 text-muted">
+            <Quote className="mx-auto h-10 w-10 text-sand/60 mb-3" />
+            <p className="font-serif text-xl text-plum">No customer reviews yet</p>
+            <p className="text-xs text-muted mt-1 max-w-sm mx-auto">
+              When customers complete their booking on the Track page, they will receive the review submission form.
+            </p>
+          </div>
+        ) : (
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {reviews.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-2xl border border-sand bg-champagne/20 p-5 shadow-xs flex flex-col justify-between hover:border-gold/50 transition-colors"
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <span className="inline-flex gap-0.5 text-gold">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Star
+                          key={s}
+                          className={`h-4 w-4 ${s <= r.rating ? "fill-gold text-gold" : "fill-sand text-sand"}`}
+                        />
+                      ))}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onDeleteReview(r.id, r.name)}
+                      aria-label="Delete review"
+                      className="rounded-full p-1.5 text-muted hover:bg-red-50 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <blockquote className="mt-3 text-sm italic text-plum leading-relaxed">
+                    &ldquo;{r.text}&rdquo;
+                  </blockquote>
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-sand/60 flex items-center justify-between text-xs text-muted">
+                  <div>
+                    <strong className="block text-plum font-semibold">{r.name}</strong>
+                    <span>{r.eventType || "Bridal Makeup"} {r.city ? `· ${r.city}` : ""}</span>
+                  </div>
+                  <span className="text-[11px] tabular-nums">{r.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

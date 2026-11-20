@@ -15,7 +15,61 @@ declare global {
   var __mbpDevSiteMedia: SiteMedia | undefined;
   // eslint-disable-next-line no-var
   var __mbpDevGallery: GalleryPhoto[] | undefined;
+  // eslint-disable-next-line no-var
+  var __mbpDevReviews: DevReview[] | undefined;
 }
+
+export interface DevReview {
+  id: string;
+  bookingId?: string;
+  name: string;
+  rating: number;
+  text: string;
+  eventType: string;
+  city?: string;
+  date: string;
+  approved: boolean;
+  createdAt: string;
+}
+
+export const INITIAL_DEV_REVIEWS: DevReview[] = [
+  {
+    id: "rev-1",
+    bookingId: "MBP-COMP01",
+    name: "Priyanka Rathore",
+    rating: 5,
+    text: "Prachi gave me the royal Rajputi bridal look of my dreams at Umaid Bhawan! The base was completely weightless, glowed throughout 10 hours of pheras and reception, and the poshak and dupatta draping was absolute perfection.",
+    eventType: "Signature Bridal Makeup",
+    city: "Jodhpur",
+    date: "2026-11-15",
+    approved: true,
+    createdAt: new Date(Date.now() - 5 * 86400000).toISOString(),
+  },
+  {
+    id: "rev-2",
+    bookingId: "MBP-COMP02",
+    name: "Ananya Sharma",
+    rating: 5,
+    text: "Booking online was seamless and tracking gave me total peace of mind. On my sangeet day, Prachi arrived exactly on time with high-end luxury cosmetics. Received endless compliments on my dewy eye styling!",
+    eventType: "Engagement & Pre-wedding Glam",
+    city: "Jaipur",
+    date: "2026-11-08",
+    approved: true,
+    createdAt: new Date(Date.now() - 12 * 86400000).toISOString(),
+  },
+  {
+    id: "rev-3",
+    bookingId: "MBP-COMP03",
+    name: "Sneha Shekhawat",
+    rating: 5,
+    text: "The eye artistry and heirloom jewellery styling were breathtaking. Prachi has such a calm, reassuring presence during wedding morning rush. Couldn't recommend Makeovers by Prachi more highly!",
+    eventType: "Signature Bridal Makeup",
+    city: "Udaipur",
+    date: "2026-10-24",
+    approved: true,
+    createdAt: new Date(Date.now() - 26 * 86400000).toISOString(),
+  },
+];
 
 if (!global.__mbpDevBookings) {
   global.__mbpDevBookings = new Map<string, SanitizedBooking>();
@@ -26,6 +80,9 @@ if (!global.__mbpDevSiteMedia) {
 if (!global.__mbpDevGallery) {
   global.__mbpDevGallery = [...DEFAULT_GALLERY];
 }
+if (!global.__mbpDevReviews) {
+  global.__mbpDevReviews = [...INITIAL_DEV_REVIEWS];
+}
 
 export const devBookings = global.__mbpDevBookings;
 
@@ -35,10 +92,11 @@ export function getDevBooking(bookingId: string, phone: string): SanitizedBookin
 
   const isRejected = bookingId.toUpperCase().includes("REJ");
   const isSubmitted = bookingId.toUpperCase().includes("REV") || bookingId.toUpperCase().includes("SUB");
+  const isCompleted = bookingId.toUpperCase().includes("COMP") || bookingId.toUpperCase().includes("DONE");
 
   const defaultBooking: SanitizedBooking = {
     bookingId,
-    status: isRejected ? "PAYMENT_REJECTED" : isSubmitted ? "PAYMENT_PROOF_SUBMITTED" : "DEPOSIT_PENDING",
+    status: isCompleted ? "COMPLETED" : isRejected ? "PAYMENT_REJECTED" : isSubmitted ? "PAYMENT_PROOF_SUBMITTED" : "DEPOSIT_PENDING",
     serviceTitle: "Signature Bridal Makeup",
     packageName: null,
     customerName: "Harshit",
@@ -54,10 +112,10 @@ export function getDevBooking(bookingId: string, phone: string): SanitizedBookin
       travelFee: 0,
       totalAmount: 25000,
       depositRequired: 7500,
-      depositPaid: isSubmitted ? 7500 : 0,
+      depositPaid: isSubmitted || isCompleted ? 7500 : 0,
     },
     payment: {
-      status: isRejected ? "REJECTED" : isSubmitted ? "VERIFICATION_PENDING" : "PENDING",
+      status: isCompleted ? "VERIFIED" : isRejected ? "REJECTED" : isSubmitted ? "VERIFICATION_PENDING" : "PENDING",
       utrLast4: isRejected || isSubmitted ? "4321" : null,
       rejectionReason: isRejected
         ? "The 12-digit UPI reference (UTR) provided does not match our bank account statement. Please verify and re-upload."
@@ -149,4 +207,21 @@ export function deleteDevGalleryItem(id: string): boolean {
   if (next.length === list.length) return false;
   global.__mbpDevGallery = next;
   return true;
+}
+
+/* -------------------- Customer Reviews -------------------- */
+
+export function getDevReviews(): DevReview[] {
+  return global.__mbpDevReviews || INITIAL_DEV_REVIEWS;
+}
+
+export function addDevReview(review: Omit<DevReview, "id" | "createdAt"> & { id?: string }): DevReview {
+  const list = getDevReviews();
+  const newRev: DevReview = {
+    ...review,
+    id: review.id || `rev-${Date.now()}`,
+    createdAt: new Date().toISOString(),
+  };
+  global.__mbpDevReviews = [newRev, ...list];
+  return newRev;
 }

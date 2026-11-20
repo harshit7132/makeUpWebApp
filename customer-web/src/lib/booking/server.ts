@@ -6,7 +6,7 @@ import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { adminDb } from "../firebase-admin";
 import type { PublicConfig, PublicService, PublicSettings } from "./types";
 import { DEFAULT_SITE_IMAGES, DEFAULT_GALLERY, type SiteMedia, type GalleryPhoto, mergeSiteMedia } from "../site-images";
-import { getDevSiteMedia, getDevGallery } from "./dev-store";
+import { getDevSiteMedia, getDevGallery, getDevReviews } from "./dev-store";
 
 export const BOOKING_ID_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -205,14 +205,25 @@ const loadApprovedReviewsCached = unstable_cache(
   { revalidate: PUBLIC_DATA_TTL_S, tags: ["reviews"] }
 );
 
-/** Approved reviews, cached for 60s. Never throws. */
+/** Approved reviews, cached for 60s. Falls back to dev-store when offline or empty. */
 export async function getApprovedReviews(limit = 50): Promise<ApprovedReview[]> {
   try {
-    return await loadApprovedReviewsCached(limit);
+    const list = await loadApprovedReviewsCached(limit);
+    if (list && list.length > 0) return list;
   } catch (err: any) {
-    console.error("[reviews] Could not load reviews:", err?.message || err);
-    return [];
+    console.warn("[reviews] Could not load from Firestore, using dev store reviews:", err?.message || err);
   }
+  const devList = getDevReviews()
+    .filter((r) => r.approved)
+    .map((r) => ({
+      id: r.id,
+      name: r.name,
+      rating: r.rating,
+      text: r.text,
+      eventType: r.eventType,
+      date: r.date,
+    }));
+  return devList.slice(0, limit);
 }
 
 /** Loads customizable photography across the site (people, hero, transformation, cities) */

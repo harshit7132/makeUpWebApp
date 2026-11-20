@@ -1,15 +1,15 @@
 import Link from "next/link";
 import React from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Quote, Star } from "lucide-react";
 import FadeImg from "../components/site/FadeImg";
-import InstagramLookCarousel from "../components/site/InstagramLookCarousel";
+import GalleryGrid from "../components/site/GalleryGrid";
 import ParallaxApproach from "../components/site/ParallaxApproach";
 import ParallaxCities from "../components/site/ParallaxCities";
 import ParallaxHero from "../components/site/ParallaxHero";
 import ParallaxMetrics from "../components/site/ParallaxMetrics";
 import ServiceCard from "../components/site/ServiceCard";
-import { getPublicConfig, getSiteMedia, getGalleryItems } from "../lib/booking/server";
-import { whatsappLink } from "../lib/booking/types";
+import { getPublicConfig, getSiteMedia, getGalleryItems, getApprovedReviews } from "../lib/booking/server";
+import { formatEventDate, whatsappLink } from "../lib/booking/types";
 
 export const dynamic = "force-dynamic";
 
@@ -20,10 +20,11 @@ const STEPS = [
 ];
 
 export default async function HomePage() {
-  const [{ services, settings }, siteMedia, gallery] = await Promise.all([
+  const [{ services, settings }, siteMedia, gallery, reviews] = await Promise.all([
     getPublicConfig(),
     getSiteMedia(),
     getGalleryItems(),
+    getApprovedReviews(6),
   ]);
 
   const featured = services.slice(0, 3);
@@ -70,31 +71,90 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- 4. Instagram Lookbook Carousels (4 to 6 photos per look) ---------------- */}
+      {/* ---------------- 4. Portfolio & Lookbook (Multi-photo carousels per look) ---------------- */}
       <section className="section bg-ivory/50 border-y border-sand/60">
         <div className="container-page">
-          <div className="mx-auto max-w-2xl text-center" data-reveal>
-            <div className="inline-flex items-center gap-2 rounded-full bg-plum/5 px-3.5 py-1 text-xs font-semibold text-plum mb-3">
-              <span className="h-2 w-2 rounded-full bg-gold animate-pulse" />
-              Instagram Lookbook · Carousel Series
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal>
+            <div>
+              <p className="eyebrow eyebrow-line">Portfolio &amp; Lookbook</p>
+              <h2 className="h-display mt-3 text-3xl sm:text-4xl text-plum">
+                Swipe through real bride creations
+              </h2>
+              <p className="mt-2 text-sm text-muted max-w-xl">
+                Each celebration features multi-photo carousels &mdash; explore HD base prep, eye sculpting, heirloom jewellery, and bridal poshak drapes.
+              </p>
             </div>
-            <h2 className="h-display text-3xl sm:text-4xl text-plum">
-              Swipe through real bride transformations
-            </h2>
-            <p className="mt-2 text-sm text-muted">
-              Each curated look features 4 to 6 angles — base prep, eye sculpting, heirloom jewellery, and bridal draping.
-            </p>
+            <Link href="/gallery" className="link-gold text-sm font-medium">
+              Explore full gallery <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
           </div>
-          <div className="mt-10" data-reveal>
-            <InstagramLookCarousel items={gallery} />
+          <div className="mt-6" data-reveal>
+            <GalleryGrid items={gallery.slice(0, 6)} />
           </div>
         </div>
       </section>
 
-      {/* ---------------- 5. Sticky Scrollytelling Approach ---------------- */}
+      {/* ---------------- 5. Verified Client Reviews (Customer Word of Mouth) ---------------- */}
+      {reviews.length > 0 && (
+        <section className="section">
+          <div className="container-page">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between" data-reveal>
+              <div>
+                <p className="eyebrow eyebrow-line">Reviews</p>
+                <h2 className="h-display mt-3 text-4xl sm:text-5xl">Kind words from our brides</h2>
+              </div>
+              <Link href="/reviews" className="link-gold text-sm font-medium">
+                Read all reviews <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+            <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {reviews.slice(0, 3).map((r, i) => (
+                <article
+                  key={r.id}
+                  className="card p-6 sm:p-7 flex flex-col justify-between shadow-soft hover:shadow-lift transition-shadow"
+                  data-reveal
+                  data-reveal-delay={i * 80}
+                >
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex gap-0.5 text-gold">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <Star
+                            key={s}
+                            className={`h-4 w-4 ${s <= r.rating ? "fill-gold text-gold" : "fill-sand text-sand"}`}
+                          />
+                        ))}
+                      </span>
+                      <Quote className="h-6 w-6 text-gold/30" />
+                    </div>
+                    <blockquote className="mt-4 font-serif text-base sm:text-lg leading-relaxed text-plum">
+                      &ldquo;{r.text}&rdquo;
+                    </blockquote>
+                  </div>
+                  <footer className="mt-5 flex items-center gap-3 border-t border-sand/70 pt-4 text-sm">
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blush font-serif text-base font-semibold text-gold-dark">
+                      {r.name.charAt(0).toUpperCase()}
+                    </span>
+                    <div>
+                      <span className="block font-semibold text-plum">{r.name}</span>
+                      <span className="block text-xs text-muted">
+                        {[r.eventType, r.date && /^\d{4}-\d{2}-\d{2}$/.test(r.date) ? formatEventDate(r.date) : r.date]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </div>
+                  </footer>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ---------------- 6. Sticky Scrollytelling Approach ---------------- */}
       <ParallaxApproach />
 
-      {/* ---------------- 6. How booking works ---------------- */}
+      {/* ---------------- 7. How booking works ---------------- */}
       <section className="section">
         <div className="container-page">
           <div className="mx-auto max-w-2xl text-center" data-reveal>
@@ -124,10 +184,10 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ---------------- 7. Parallax Cities & Destinations ---------------- */}
+      {/* ---------------- 8. Parallax Cities & Destinations ---------------- */}
       <ParallaxCities />
 
-      {/* ---------------- 8. CTA ---------------- */}
+      {/* ---------------- 9. CTA ---------------- */}
       <section className="container-page pb-20">
         <div className="relative isolate overflow-hidden rounded-[2.5rem] bg-plum px-6 py-14 text-center text-white sm:px-12 sm:py-20 shadow-2xl" data-reveal>
           <FadeImg src={siteMedia.mehendi} alt="" sizes="1100px" className="absolute inset-0 -z-10 h-full w-full object-cover opacity-30" />
