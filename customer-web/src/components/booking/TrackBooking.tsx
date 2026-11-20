@@ -195,7 +195,7 @@ function buildStages(status: string, rejectionReason?: string | null): Stage[] {
       },
       {
         key: "day",
-        title: "Your big day",
+        title: "Your big big day",
         text: "Getting you ready, beautifully.",
         icon: Sparkles,
         state: "todo",
@@ -457,15 +457,14 @@ function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: 
                   />
                 )}
                 <span
-                  className={`relative z-[1] inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                    s.state === "done"
-                      ? "bg-plum text-gold-light"
-                      : s.state === "current"
-                        ? "bg-white text-gold-dark ring-2 ring-gold shadow-[0_0_0_6px_rgba(212,175,55,0.15)]"
-                        : s.state === "failed"
-                          ? "bg-red-50 text-red-700 ring-1 ring-red-200"
-                          : "bg-champagne text-muted"
-                  }`}
+                  className={`relative z-[1] inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${s.state === "done"
+                    ? "bg-plum text-gold-light"
+                    : s.state === "current"
+                      ? "bg-white text-gold-dark ring-2 ring-gold shadow-[0_0_0_6px_rgba(212,175,55,0.15)]"
+                      : s.state === "failed"
+                        ? "bg-red-50 text-red-700 ring-1 ring-red-200"
+                        : "bg-champagne text-muted"
+                    }`}
                 >
                   <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
                   {s.state === "current" && (
@@ -502,9 +501,8 @@ function BookingStatus({ booking, wa, phone }: { booking: SanitizedBooking; wa: 
             <Detail
               icon={IndianRupee}
               label="Amounts"
-              value={`Total ${formatINR(booking.commercials.totalAmount)} · Deposit ${formatINR(booking.commercials.depositRequired)}${
-                booking.commercials.depositPaid > 0 ? ` (paid ${formatINR(booking.commercials.depositPaid)})` : ""
-              }`}
+              value={`Total ${formatINR(booking.commercials.totalAmount)} · Deposit ${formatINR(booking.commercials.depositRequired)}${booking.commercials.depositPaid > 0 ? ` (paid ${formatINR(booking.commercials.depositPaid)})` : ""
+                }`}
             />
             {booking.payment.utrLast4 && <Detail icon={Hash} label="UPI reference" value={`ending ${booking.payment.utrLast4}`} />}
           </dl>
