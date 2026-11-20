@@ -39,6 +39,15 @@ export const SITE_IMAGES = {
     udaipur: u("1615836245337-f5b9b2303f10", 1600),
     destination: u("1630526720753-aa4e71acf67d", 1600),
   },
+
+  /**
+   * Before & After Transformation Photos (Option 2)
+   * Replace these URLs or drop files in /public/images when client sends photos!
+   */
+  transformation: {
+    before: u("1544005313-94ddf0286df2", 1200),
+    after: u("1600685890506-593fdf55949b", 1200),
+  },
 } as const;
 
 export interface GalleryPhoto {
