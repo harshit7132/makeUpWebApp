@@ -84,8 +84,17 @@ export class CloudRunEmbeddingProvider implements EmbeddingProvider {
   private timeoutMs: number;
 
   constructor(serviceUrl?: string, secret?: string) {
-    this.serviceUrl =
+    const rawUrl =
       serviceUrl || process.env.EMBEDDING_SERVICE_URL || "http://localhost:8080/embed";
+    try {
+      const parsed = new URL(rawUrl);
+      if (parsed.pathname === "" || parsed.pathname === "/") {
+        parsed.pathname = "/embed";
+      }
+      this.serviceUrl = parsed.toString();
+    } catch {
+      this.serviceUrl = rawUrl.endsWith("/embed") ? rawUrl : `${rawUrl.replace(/\/+$/, "")}/embed`;
+    }
     this.secret = secret || process.env.EMBEDDING_SERVICE_SECRET || "";
     this.timeoutMs = parseInt(process.env.EMBEDDING_TIMEOUT_MS || "3500", 10);
   }
