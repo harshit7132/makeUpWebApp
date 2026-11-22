@@ -606,9 +606,8 @@ export default function BookingWizard() {
                           role="radio"
                           aria-checked={active}
                           onClick={() => update("city", c)}
-                          className={`flex min-h-[60px] flex-col items-start justify-center rounded-xl border px-4 py-2 text-left transition duration-200 ease-out-expo active:scale-[0.98] ${
-                            active ? "border-plum bg-plum text-white shadow-soft" : "border-sand bg-white text-plum hover:border-gold/70"
-                          }`}
+                          className={`flex min-h-[60px] flex-col items-start justify-center rounded-xl border px-4 py-2 text-left transition duration-200 ease-out-expo active:scale-[0.98] ${active ? "border-plum bg-plum text-white shadow-soft" : "border-sand bg-white text-plum hover:border-gold/70"
+                            }`}
                         >
                           <span className="text-sm font-semibold">{c === "Other" ? "Other city" : c}</span>
                           <span className={`text-xs ${active ? "text-gold-light" : "text-muted"}`}>
@@ -873,13 +872,12 @@ function Stepper({ step, complete = false, onJump }: { step: number; complete?: 
                   onClick={() => onJump(n)}
                   disabled={!clickable}
                   aria-label={`Step ${n}: ${label}${state === "done" ? " (completed)" : ""}`}
-                  className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition duration-300 ease-out-expo disabled:cursor-default ${
-                    state === "done"
-                      ? "border-plum bg-plum text-gold-light hover:scale-105"
-                      : state === "current"
-                        ? "border-gold bg-white text-plum shadow-[0_0_0_5px_rgba(212,175,55,0.18)]"
-                        : "border-sand bg-ivory text-muted"
-                  }`}
+                  className={`relative inline-flex h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold transition duration-300 ease-out-expo disabled:cursor-default ${state === "done"
+                    ? "border-plum bg-plum text-gold-light hover:scale-105"
+                    : state === "current"
+                      ? "border-gold bg-white text-plum shadow-[0_0_0_5px_rgba(212,175,55,0.18)]"
+                      : "border-sand bg-ivory text-muted"
+                    }`}
                 >
                   {state === "done" ? <Check className="h-4 w-4 animate-pop" aria-hidden="true" /> : n}
                 </button>
@@ -915,9 +913,8 @@ function ServiceOption({ service, selected, onSelect, index }: { service: Public
       onClick={onSelect}
       aria-pressed={selected}
       style={{ animationDelay: `${index * 50}ms` }}
-      className={`group relative flex animate-fade-up overflow-hidden rounded-2xl border bg-white text-left shadow-soft transition duration-300 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.99] sm:flex-col ${
-        selected ? "border-plum ring-2 ring-gold ring-offset-2 ring-offset-champagne" : "border-sand/80 hover:border-gold/60"
-      }`}
+      className={`group relative flex animate-fade-up overflow-hidden rounded-2xl border bg-white text-left shadow-soft transition duration-300 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.99] sm:flex-col ${selected ? "border-plum ring-2 ring-gold ring-offset-2 ring-offset-champagne" : "border-sand/80 hover:border-gold/60"
+        }`}
     >
       <div className="relative w-28 shrink-0 overflow-hidden bg-blush sm:aspect-[16/10] sm:w-full">
         <FadeImg
@@ -946,9 +943,8 @@ function ServiceOption({ service, selected, onSelect, index }: { service: Public
       </div>
       <span
         aria-hidden="true"
-        className={`absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border transition duration-300 ease-out-expo ${
-          selected ? "scale-100 border-plum bg-plum text-gold-light" : "scale-90 border-sand bg-white/90 text-transparent"
-        }`}
+        className={`absolute right-3 top-3 inline-flex h-7 w-7 items-center justify-center rounded-full border transition duration-300 ease-out-expo ${selected ? "scale-100 border-plum bg-plum text-gold-light" : "scale-90 border-sand bg-white/90 text-transparent"
+          }`}
       >
         <Check className="h-4 w-4" />
       </span>
@@ -973,9 +969,8 @@ function TimePicker({ value, onChange }: { value: string; onChange: (t: string) 
             role="tab"
             aria-selected={group === i}
             onClick={() => setGroup(i)}
-            className={`min-h-[40px] rounded-full text-xs font-semibold transition duration-200 ease-out-expo ${
-              group === i ? "bg-white text-plum shadow-soft" : "text-muted hover:text-plum"
-            }`}
+            className={`min-h-[40px] rounded-full text-xs font-semibold transition duration-200 ease-out-expo ${group === i ? "bg-white text-plum shadow-soft" : "text-muted hover:text-plum"
+              }`}
           >
             {g.label}
           </button>
