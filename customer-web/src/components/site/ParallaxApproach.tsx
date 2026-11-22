@@ -80,8 +80,9 @@ export default function ParallaxApproach() {
         if (window.innerWidth >= 1024) return;
         if (isManualTapRef.current) return;
 
-        // Sweet spot focal line in the phone viewport (55% down the screen, right where cards are read)
-        const focalLine = window.innerHeight * 0.55;
+        // Sweet spot focal line in the phone viewport below the sticky photo card (~220px from top)
+        const photoBottom = 220;
+        const focalLine = Math.max(photoBottom + 60, photoBottom + (window.innerHeight - photoBottom) * 0.42);
 
         let closestIdx = 0;
         let minDistance = Infinity;
@@ -225,13 +226,13 @@ export default function ParallaxApproach() {
                 you stay radiant through the final pheras.
               </p>
 
-              {/* Mobile Visual Stage (lg:hidden) - Prominently displays and switches photo on scroll and tap */}
+              {/* Mobile Visual Stage (lg:hidden) - Sticky at top so photo stays visible across all 3 steps */}
               <div
-                className="relative mx-auto mt-4 w-full lg:hidden"
+                className="sticky top-16 z-30 -mx-4 px-4 pt-1.5 pb-2.5 bg-blush/95 backdrop-blur-md lg:hidden"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
               >
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-plum-dark shadow-xl ring-1 ring-gold/30">
+                <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl bg-plum-dark shadow-xl ring-1 ring-gold/30">
                   {STEPS.map((step, idx) => (
                     <div
                       key={step.step}
@@ -276,12 +277,12 @@ export default function ParallaxApproach() {
                 {/* Subtle decorative framing */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute -bottom-1.5 -left-1.5 -z-10 h-full w-full rounded-2xl border border-gold/30"
+                  className="pointer-events-none absolute -bottom-1 -left-1 -z-10 h-full w-full rounded-2xl border border-gold/30"
                 />
               </div>
 
               {/* Steps with living progress rail */}
-              <div className="relative mt-6 space-y-3.5 sm:mt-8 sm:space-y-4">
+              <div className="relative mt-5 space-y-3.5 pb-6 sm:mt-8 sm:space-y-4 sm:pb-8">
                 <div
                   aria-hidden="true"
                   className="absolute left-6 top-3 bottom-3 hidden w-[2px] bg-sand/70 sm:block"

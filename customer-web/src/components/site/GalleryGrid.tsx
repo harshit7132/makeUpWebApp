@@ -162,36 +162,35 @@ function GalleryCard({
           </>
         )}
 
-        {/* Subtle dot indicator strip at bottom above the caption */}
-        {images.length > 1 && (
-          <div className="absolute bottom-16 inset-x-0 z-20 flex justify-center gap-1.5 pointer-events-auto">
-            {images.map((_, dotIdx) => (
-              <button
-                key={dotIdx}
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPhotoIndex(dotIdx);
-                }}
-                aria-label={`Photo ${dotIdx + 1} of ${images.length}`}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  dotIdx === photoIndex ? "w-5 bg-gold" : "w-1.5 bg-white/60 hover:bg-white"
-                }`}
-              />
-            ))}
-          </div>
-        )}
+        {/* Caption with integrated non-colliding indicators */}
+        <figcaption className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-plum-dark/95 via-plum-dark/70 to-transparent p-3 pt-10 text-white sm:p-4 sm:pt-12">
+          {images.length > 1 && (
+            <div className="mb-1.5 flex items-center gap-1.5 pointer-events-auto">
+              {images.map((_, dotIdx) => (
+                <button
+                  key={dotIdx}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPhotoIndex(dotIdx);
+                  }}
+                  aria-label={`Photo ${dotIdx + 1} of ${images.length}`}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    dotIdx === photoIndex ? "w-4 bg-gold" : "w-1.5 bg-white/50 hover:bg-white"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
 
-        {/* Caption */}
-        <figcaption className="absolute inset-x-0 bottom-0 p-3 text-white sm:p-4 z-10">
           <span className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-gold-light sm:block">
             {item.category}
           </span>
-          <span className="mt-0.5 block font-serif text-sm font-semibold leading-snug sm:text-lg">
+          <span className="block font-serif text-xs font-semibold leading-snug sm:text-base">
             {item.title}
           </span>
           {item.desc && (
-            <span className="mt-1 block text-xs text-white/70 truncate line-clamp-1">
+            <span className="mt-0.5 block text-[11px] text-white/75 truncate line-clamp-1 sm:text-xs">
               {item.desc}
             </span>
           )}
