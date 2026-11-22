@@ -5,7 +5,7 @@ import React, { useRef } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import FadeImg from "./FadeImg";
-import { SITE_IMAGES } from "../../lib/site-images";
+import { DEFAULT_SITE_IMAGES, SITE_IMAGES } from "../../lib/site-images";
 
 const STEPS = [
   {
@@ -59,13 +59,13 @@ export default function ParallaxApproach() {
   const progressHeight = useTransform(scrollYProgress, [0, 1], ["10%", "100%"]);
 
   return (
-    <section ref={containerRef} className="relative h-[250vh] bg-blush/40">
-      {/* Sticky Viewport Stage */}
-      <div className="sticky top-0 flex h-screen w-full items-center overflow-hidden">
-        <div className="container-page w-full py-10">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-            {/* Visual Stage (Left) */}
-            <div className="relative mx-auto w-full max-w-md lg:max-w-none">
+    <section ref={containerRef} className="relative bg-blush/40 lg:h-[250vh]">
+      {/* Sticky Viewport Stage on Desktop, clean natural flow on Mobile (no clipping/cropping) */}
+      <div className="w-full lg:sticky lg:top-0 lg:flex lg:h-screen lg:items-center lg:overflow-hidden">
+        <div className="container-page w-full py-12 sm:py-16 lg:py-10">
+          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+            {/* Visual Stage (Left) - Desktop only with sticky cross-fade transitions */}
+            <div className="relative mx-auto hidden w-full max-w-md lg:block lg:max-w-none">
               <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[2.5rem] bg-plum-dark shadow-2xl ring-1 ring-gold/30">
                 {/* Visual 1 */}
                 <motion.div
@@ -155,7 +155,7 @@ export default function ParallaxApproach() {
                   />
                 </div>
 
-                {STEPS.map((step, idx) => (
+                {STEPS.map((step) => (
                   <div
                     key={step.step}
                     className="group relative flex items-start gap-4 rounded-2xl border border-gold/20 bg-white/70 p-4 transition-all duration-300 hover:border-gold/50 hover:bg-white hover:shadow-soft"
@@ -163,8 +163,13 @@ export default function ParallaxApproach() {
                     <span className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-plum-dark font-serif text-sm font-semibold text-gold-light shadow-sm">
                       {step.step}
                     </span>
-                    <div>
-                      <h3 className="font-semibold text-plum">{step.title}</h3>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center justify-between gap-1">
+                        <h3 className="font-semibold text-plum">{step.title}</h3>
+                        <span className="text-[10px] font-medium uppercase tracking-wider text-gold-dark lg:hidden">
+                          {step.tag}
+                        </span>
+                      </div>
                       <p className="mt-1 text-xs sm:text-sm leading-relaxed text-muted">{step.text}</p>
                     </div>
                   </div>
