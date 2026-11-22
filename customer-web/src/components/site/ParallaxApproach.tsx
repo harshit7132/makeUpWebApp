@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import FadeImg from "./FadeImg";
@@ -36,9 +36,15 @@ const STEPS = [
 
 export default function ParallaxApproach() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const isManualTapRef = useRef(false);
+  const tapTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartX = useRef<number | null>(null);
+
   const prefersReduced = useReducedMotion();
   const [activeStep, setActiveStep] = useState(0);
 
+  // Desktop scrollytelling progress
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start start", "end end"],
@@ -59,12 +65,87 @@ export default function ParallaxApproach() {
   // Progress bar height for the right column
   const progressHeight = useTransform(scrollYProgress, [0, 1], ["10%", "100%"]);
 
+  // Mobile scroll tracking: smoothly updates activeStep as the user scrolls through the cards on phone
+  useEffect(() => {
+    let ticking = false;
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+
+      requestAnimationFrame(() => {
+        ticking = false;
+        if (typeof window === "undefined") return;
+        // On desktop (>=1024px), Framer Motion's scrollYProgress drives the view
+        if (window.innerWidth >= 1024) return;
+        if (isManualTapRef.current) return;
+
+        // Sweet spot focal line in the phone viewport (55% down the screen, right where cards are read)
+        const focalLine = window.innerHeight * 0.55;
+
+        let closestIdx = 0;
+        let minDistance = Infinity;
+
+        cardRefs.current.forEach((el, idx) => {
+          if (!el) return;
+          const rect = el.getBoundingClientRect();
+          const cardCenter = rect.top + rect.height / 2;
+          const dist = Math.abs(cardCenter - focalLine);
+
+          if (dist < minDistance) {
+            minDistance = dist;
+            closestIdx = idx;
+          }
+        });
+
+        setActiveStep((prev) => (prev !== closestIdx ? closestIdx : prev));
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    onScroll();
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    };
+  }, []);
+
+  const handleStepSelect = (idx: number) => {
+    setActiveStep(idx);
+    isManualTapRef.current = true;
+    if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
+    tapTimerRef.current = setTimeout(() => {
+      isManualTapRef.current = false;
+    }, 800);
+  };
+
+  // Touch swipe support on mobile photo card
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(deltaX) > 40) {
+      if (deltaX < 0) {
+        handleStepSelect(Math.min(STEPS.length - 1, activeStep + 1));
+      } else {
+        handleStepSelect(Math.max(0, activeStep - 1));
+      }
+    }
+  };
+
   return (
     <section ref={containerRef} className="relative bg-blush/40 lg:h-[250vh]">
       {/* Sticky Viewport Stage on Desktop, clean natural flow on Mobile (no clipping/cropping) */}
       <div className="w-full lg:sticky lg:top-0 lg:flex lg:h-screen lg:items-center lg:overflow-hidden">
-        <div className="container-page w-full py-12 sm:py-16 lg:py-10">
-          <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-16 xl:gap-20">
+        <div className="container-page w-full py-10 sm:py-14 lg:py-10">
+          <div className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16 xl:gap-20">
             {/* Visual Stage (Left) - Desktop only with sticky cross-fade transitions */}
             <div className="relative mx-auto hidden w-full max-w-md lg:block lg:max-w-none">
               <div className="relative aspect-[4/5] w-full overflow-hidden rounded-[2.5rem] bg-plum-dark shadow-2xl ring-1 ring-gold/30">
@@ -136,21 +217,25 @@ export default function ParallaxApproach() {
             {/* Content & Interactive Step Cards (Right) */}
             <div className="relative pl-0 lg:pl-6">
               <p className="eyebrow eyebrow-line">Our Approach</p>
-              <h2 className="h-display mt-3 text-3xl sm:text-4xl lg:text-5xl">
+              <h2 className="h-display mt-2.5 text-2xl sm:text-4xl lg:text-5xl">
                 Made for long days, <em className="font-medium text-gold-dark">bright lights</em> and every photo.
               </h2>
-              <p className="mt-4 text-sm leading-relaxed text-muted sm:text-base">
+              <p className="mt-3 text-xs leading-relaxed text-muted sm:text-base">
                 Every bride is unique. We scrupulously curate your look around your jewellery, outfit, and timeline so
                 you stay radiant through the final pheras.
               </p>
 
-              {/* Mobile Visual Stage (lg:hidden) - Prominently displays the visual look on phones */}
-              <div className="relative mx-auto mt-6 w-full lg:hidden">
-                <div className="relative aspect-[16/11] w-full overflow-hidden rounded-3xl bg-plum-dark shadow-xl ring-1 ring-gold/30">
+              {/* Mobile Visual Stage (lg:hidden) - Prominently displays and switches photo on scroll and tap */}
+              <div
+                className="relative mx-auto mt-4 w-full lg:hidden"
+                onTouchStart={handleTouchStart}
+                onTouchEnd={handleTouchEnd}
+              >
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-2xl bg-plum-dark shadow-xl ring-1 ring-gold/30">
                   {STEPS.map((step, idx) => (
                     <div
                       key={step.step}
-                      className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
+                      className={`absolute inset-0 h-full w-full transition-opacity duration-500 ease-out ${
                         activeStep === idx ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0"
                       }`}
                     >
@@ -160,12 +245,12 @@ export default function ParallaxApproach() {
                         sizes="(max-width: 1024px) 100vw, 520px"
                         className="h-full w-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-plum-dark/85 via-plum-dark/20 to-transparent" />
-                      <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-2">
-                        <span className="inline-block rounded-full bg-gold/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-plum-dark shadow-sm">
+                      <div className="absolute inset-0 bg-gradient-to-t from-plum-dark/90 via-plum-dark/20 to-transparent" />
+                      <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between gap-2">
+                        <span className="inline-block rounded-full bg-gold/95 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-plum-dark shadow-sm">
                           {step.tag}
                         </span>
-                        <span className="rounded-full border border-gold/30 bg-plum-dark/80 px-2.5 py-0.5 font-serif text-xs text-gold-light">
+                        <span className="rounded-full border border-gold/30 bg-plum-dark/80 px-2 py-0.5 font-serif text-[11px] sm:text-xs text-gold-light">
                           {step.step} / 03
                         </span>
                       </div>
@@ -173,12 +258,12 @@ export default function ParallaxApproach() {
                   ))}
 
                   {/* Dot navigation indicators */}
-                  <div className="absolute top-3.5 right-3.5 z-20 flex items-center gap-1.5 rounded-full border border-gold/20 bg-plum-dark/70 px-2.5 py-1 backdrop-blur-sm">
+                  <div className="absolute top-3 right-3 z-20 flex items-center gap-1.5 rounded-full border border-gold/20 bg-plum-dark/70 px-2.5 py-1 backdrop-blur-sm">
                     {STEPS.map((s, idx) => (
                       <button
                         key={s.step}
                         type="button"
-                        onClick={() => setActiveStep(idx)}
+                        onClick={() => handleStepSelect(idx)}
                         aria-label={`Show ${s.title}`}
                         className={`h-1.5 rounded-full transition-all duration-300 ${
                           activeStep === idx ? "w-5 bg-gold" : "w-1.5 bg-white/40"
@@ -191,12 +276,12 @@ export default function ParallaxApproach() {
                 {/* Subtle decorative framing */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute -bottom-2 -left-2 -z-10 h-full w-full rounded-3xl border border-gold/30"
+                  className="pointer-events-none absolute -bottom-1.5 -left-1.5 -z-10 h-full w-full rounded-2xl border border-gold/30"
                 />
               </div>
 
               {/* Steps with living progress rail */}
-              <div className="relative mt-8 space-y-4">
+              <div className="relative mt-6 space-y-3.5 sm:mt-8 sm:space-y-4">
                 <div
                   aria-hidden="true"
                   className="absolute left-6 top-3 bottom-3 hidden w-[2px] bg-sand/70 sm:block"
@@ -210,23 +295,26 @@ export default function ParallaxApproach() {
                 {STEPS.map((step, idx) => (
                   <div
                     key={step.step}
-                    onClick={() => setActiveStep(idx)}
+                    ref={(el) => {
+                      cardRefs.current[idx] = el;
+                    }}
+                    onClick={() => handleStepSelect(idx)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === "Enter" || e.key === " ") {
                         e.preventDefault();
-                        setActiveStep(idx);
+                        handleStepSelect(idx);
                       }
                     }}
-                    className={`group relative flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-all duration-300 ${
+                    className={`group relative flex cursor-pointer items-start gap-3.5 rounded-2xl border p-3.5 sm:p-4 transition-all duration-300 ${
                       activeStep === idx
                         ? "border-gold-dark/60 bg-white shadow-soft ring-1 ring-gold-dark/30 lg:border-gold/20 lg:bg-white/70 lg:ring-0 lg:hover:border-gold/50 lg:hover:bg-white"
                         : "border-gold/20 bg-white/70 hover:border-gold/50 hover:bg-white"
                     }`}
                   >
                     <span
-                      className={`relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-serif text-sm font-semibold shadow-sm transition-colors duration-300 ${
+                      className={`relative z-10 flex h-10 w-10 sm:h-11 sm:w-11 shrink-0 items-center justify-center rounded-xl font-serif text-sm font-semibold shadow-sm transition-colors duration-300 ${
                         activeStep === idx
                           ? "bg-plum text-gold-light ring-1 ring-gold/40 lg:bg-plum-dark"
                           : "bg-plum-dark text-gold-light"
@@ -236,18 +324,18 @@ export default function ParallaxApproach() {
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center justify-between gap-1">
-                        <h3 className="font-semibold text-plum">{step.title}</h3>
+                        <h3 className="text-sm sm:text-base font-semibold text-plum">{step.title}</h3>
                         <span className="text-[10px] font-medium uppercase tracking-wider text-gold-dark lg:hidden">
                           {step.tag}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs sm:text-sm leading-relaxed text-muted">{step.text}</p>
+                      <p className="mt-0.5 text-xs sm:text-sm leading-relaxed text-muted">{step.text}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-8 flex items-center gap-4">
+              <div className="mt-6 sm:mt-8 flex items-center gap-4">
                 <Link href="/gallery" className="link-gold text-sm font-medium">
                   Explore full bridal gallery <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
