@@ -13,7 +13,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ["firebase-admin"],
+    serverComponentsExternalPackages: ["firebase-admin", "jwks-rsa"],
   },
 };
 
