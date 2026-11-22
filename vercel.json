@@ -3,19 +3,7 @@
   "services": {
     "customer-web": {
       "root": "customer-web",
-      "framework": "nextjs",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "embedding-service",
-          "format": "url",
-          "env": "EMBEDDING_SERVICE_URL"
-        }
-      ]
-    },
-    "embedding-service": {
-      "root": "services/embedding-service",
-      "framework": "fastapi"
+      "framework": "nextjs"
     }
   },
   "rewrites": [
