@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { motion, useScroll, useTransform, useReducedMotion } from "framer-motion";
 import FadeImg from "./FadeImg";
@@ -37,6 +37,7 @@ const STEPS = [
 export default function ParallaxApproach() {
   const containerRef = useRef<HTMLDivElement>(null);
   const prefersReduced = useReducedMotion();
+  const [activeStep, setActiveStep] = useState(0);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -143,6 +144,57 @@ export default function ParallaxApproach() {
                 you stay radiant through the final pheras.
               </p>
 
+              {/* Mobile Visual Stage (lg:hidden) - Prominently displays the visual look on phones */}
+              <div className="relative mx-auto mt-6 w-full lg:hidden">
+                <div className="relative aspect-[16/11] w-full overflow-hidden rounded-3xl bg-plum-dark shadow-xl ring-1 ring-gold/30">
+                  {STEPS.map((step, idx) => (
+                    <div
+                      key={step.step}
+                      className={`absolute inset-0 h-full w-full transition-opacity duration-500 ${
+                        activeStep === idx ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0"
+                      }`}
+                    >
+                      <FadeImg
+                        src={step.img}
+                        alt={step.alt}
+                        sizes="(max-width: 1024px) 100vw, 520px"
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-plum-dark/85 via-plum-dark/20 to-transparent" />
+                      <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between gap-2">
+                        <span className="inline-block rounded-full bg-gold/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-plum-dark shadow-sm">
+                          {step.tag}
+                        </span>
+                        <span className="rounded-full border border-gold/30 bg-plum-dark/80 px-2.5 py-0.5 font-serif text-xs text-gold-light">
+                          {step.step} / 03
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Dot navigation indicators */}
+                  <div className="absolute top-3.5 right-3.5 z-20 flex items-center gap-1.5 rounded-full border border-gold/20 bg-plum-dark/70 px-2.5 py-1 backdrop-blur-sm">
+                    {STEPS.map((s, idx) => (
+                      <button
+                        key={s.step}
+                        type="button"
+                        onClick={() => setActiveStep(idx)}
+                        aria-label={`Show ${s.title}`}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          activeStep === idx ? "w-5 bg-gold" : "w-1.5 bg-white/40"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Subtle decorative framing */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -bottom-2 -left-2 -z-10 h-full w-full rounded-3xl border border-gold/30"
+                />
+              </div>
+
               {/* Steps with living progress rail */}
               <div className="relative mt-8 space-y-4">
                 <div
@@ -155,12 +207,31 @@ export default function ParallaxApproach() {
                   />
                 </div>
 
-                {STEPS.map((step) => (
+                {STEPS.map((step, idx) => (
                   <div
                     key={step.step}
-                    className="group relative flex items-start gap-4 rounded-2xl border border-gold/20 bg-white/70 p-4 transition-all duration-300 hover:border-gold/50 hover:bg-white hover:shadow-soft"
+                    onClick={() => setActiveStep(idx)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        setActiveStep(idx);
+                      }
+                    }}
+                    className={`group relative flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-all duration-300 ${
+                      activeStep === idx
+                        ? "border-gold-dark/60 bg-white shadow-soft ring-1 ring-gold-dark/30 lg:border-gold/20 lg:bg-white/70 lg:ring-0 lg:hover:border-gold/50 lg:hover:bg-white"
+                        : "border-gold/20 bg-white/70 hover:border-gold/50 hover:bg-white"
+                    }`}
                   >
-                    <span className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-plum-dark font-serif text-sm font-semibold text-gold-light shadow-sm">
+                    <span
+                      className={`relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl font-serif text-sm font-semibold shadow-sm transition-colors duration-300 ${
+                        activeStep === idx
+                          ? "bg-plum text-gold-light ring-1 ring-gold/40 lg:bg-plum-dark"
+                          : "bg-plum-dark text-gold-light"
+                      }`}
+                    >
                       {step.step}
                     </span>
                     <div className="min-w-0 flex-1">
